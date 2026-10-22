@@ -1,0 +1,196 @@
+# Writes the four HTML pages from one shared shell. Run: python3 tools/pages.py
+from pathlib import Path
+ROOT = Path(__file__).resolve().parent.parent
+
+ICON = {
+  'home': '<path d="M3.5 10.5 12 4l8.5 6.5V19a1 1 0 0 1-1 1H15v-5.5H9V20H4.5a1 1 0 0 1-1-1z"/>',
+  'history': '<path d="M3 9.2 12 4l9 5.2M5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 20.5h18"/>',
+  'economics': '<path d="M4 4.5c4 0 6 15 16 15M4 19.5c6-1 10-14 16-15"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/>',
+  'geography': '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3.4 3 13.6 0 17M12 3.5c-3 3.4-3 13.6 0 17"/>',
+}
+svg = lambda k, w=20: f'<svg viewBox="0 0 24 24" width="{w}" height="{w}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{ICON[k]}</svg>'
+LOGO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><ellipse cx="12" cy="12" rx="3.8" ry="9.2" style="stroke:var(--accent, currentColor)"/><path d="M2.8 12h18.4" opacity=".5"/></svg>'
+FAV = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f0b45a' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cellipse cx='12' cy='12' rx='4' ry='9.5'/%3E%3C/svg%3E"
+SUBJ = [('history', 'History', 'hist'), ('economics', 'Economics', 'econ'), ('geography', 'Geography', 'geo')]
+
+def shell(page, title, desc, main, script, subject=''):
+    links = ''.join(f'<a class="nav__link" href="{k}.html" style="--c:var(--{c})"{" aria-current=\"page\"" if page == k else ""}>{n}</a>' for k, n, c in SUBJ)
+    tabs = ''.join(f'<a href="{h}" style="--c:var(--{c})"{" aria-current=\"page\"" if page == k else ""}>{svg(k)}<span>{n}</span></a>'
+                   for k, h, n, c in [('home', 'index.html', 'Home', 'text')] + [(k, f'{k}.html', n[:4] + '.' if n == 'Economics' else n[:4] + '.' if n == 'Geography' else n, c) for k, n, c in SUBJ])
+    vendor = ''.join(f'<script src="assets/vendor/{f}" defer></script>' for f in ['gsap.min.js', 'ScrollTrigger.min.js', 'SplitText.min.js', 'Flip.min.js', 'DrawSVGPlugin.min.js', 'CustomEase.min.js', 'lenis.min.js'])
+    return f'''<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{title}</title>
+<meta name="description" content="{desc}">
+<meta name="theme-color" content="#07080b">
+<link rel="icon" href="{FAV}">
+<link rel="preload" href="assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/css/site.css">
+<script>(function(){{var d=document.documentElement,t;d.classList.add('js');try{{t=JSON.parse(localStorage.getItem('meridian:theme'))}}catch(e){{}}d.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');window.__mFallback=setTimeout(function(){{d.classList.add('reveal-fallback')}},3000)}})();</script>
+</head>
+<body{f' data-subject="{subject}"' if subject else ''}>
+<a class="skip" href="#content">Skip to content</a>
+<header class="nav"><div class="nav__bar">
+  <a class="brand" href="index.html" aria-label="Meridian home">{LOGO}<span>Meridian</span><small>I&amp;S revision</small></a>
+  <nav class="nav__links" aria-label="Subjects">{links}</nav>
+  <button class="icon-btn" data-theme-toggle aria-label="Switch light or dark theme">
+    <svg class="theme-ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+    <svg class="theme-ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>
+  </button>
+  <span class="nav__progress" aria-hidden="true"></span>
+</div></header>
+<nav class="tabbar" aria-label="Pages">{tabs}</nav>
+<main id="content">
+{main}
+</main>
+<footer class="footer"><div class="wrap">
+  <div class="footer__grid">
+    <div><a class="brand" href="index.html" style="margin-bottom:14px">{LOGO}<span>Meridian</span></a>
+      <p>Revision help for Cambridge IGCSE History, Economics and Geography, made by your Individuals &amp; Societies prefect. The notes are written in our own words. Information about the exams has been checked against the official Cambridge syllabuses.</p></div>
+    <div><h4>Subjects</h4><ul>{''.join(f'<li><a href="{k}.html">{n}</a></li>' for k, n, c in SUBJ)}</ul></div>
+    <div><h4>Official syllabuses</h4><ul>
+      <li><a href="https://www.cambridgeinternational.org/Images/721327-2027-2028-syllabus.pdf" rel="noopener">History 0470 (2027–2028)</a></li>
+      <li><a href="https://www.cambridgeinternational.org/Images/718148-2027-2029-syllabus.pdf" rel="noopener">Economics 0455 (2027–2029)</a></li>
+      <li><a href="https://www.cambridgeinternational.org/Images/718150-2027-2029-syllabus.pdf" rel="noopener">Geography 0460 (2027–2029)</a></li></ul></div>
+  </div>
+  <div class="footer__base"><span>Not affiliated with or endorsed by Cambridge University Press &amp; Assessment.</span><span>Always follow your teacher's guidance.</span></div>
+</div></footer>
+{vendor}
+<script type="module" src="assets/js/{script}"></script>
+</body>
+</html>
+'''
+
+def chip(k, n, c, code):
+    return f'<a class="code-chip" href="{k}.html" style="--c:var(--{c})"><b>{n}</b>{code}</a>'
+
+LENSES = [
+  ('history', 'hist', '01', 'History 0470', 'International relations <em>since 1919</em>',
+   'Six Core key questions, from the Treaty of Versailles to the collapse of Soviet control in Eastern Europe, plus one depth study.',
+   [('6', 'Core key questions'), ('5', 'depth studies'), ('3', 'components')]),
+  ('economics', 'econ', '02', 'Economics 0455', 'Markets, government <em>and trade</em>',
+   'Six topics, from the basic economic problem to international trade and globalisation. Includes an interactive supply and demand diagram.',
+   [('6', 'topics'), ('40', 'questions in Paper 1'), ('80', 'marks in Paper 2')]),
+  ('geography', 'geo', '03', 'Geography 0460', 'Physical and <em>human geography</em>',
+   'Ten topics, from river environments to resource provision, and the 16 detailed specific examples you need for the exam.',
+   [('10', 'topics'), ('16', 'specific examples'), ('2', 'written papers')]),
+]
+lens_html = ''.join(f'''
+    <section class="lens" id="lens-{k}" aria-labelledby="lens-{k}-h">
+      <div class="wrap"><article class="lens__card" style="--c:var(--{c})" data-reveal>
+        <p class="lens__num"><b>{num}</b>{label}</p>
+        <h2 class="h2" id="lens-{k}-h">{h}</h2>
+        <p class="muted" style="font-size:16px;line-height:1.55">{p}</p>
+        <ul class="lens__stats">{''.join(f'<li><b data-count="{n}">{n}</b>{t}</li>' for n, t in stats)}</ul>
+        <a class="btn btn--accent" href="{k}.html" style="justify-self:start">Go to {label.split()[0]} <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
+      </article></div>
+    </section>''' for k, c, num, label, h, p, stats in LENSES)
+
+def change(k, name, code, level, items, foot):
+    lis = ''.join(f'<li><b>{t}</b><span>{v}</span></li>' for t, v in items)
+    return f'''<article class="card pad change" data-reveal data-spot style="--accent:var(--{k})">
+      <div class="change__head"><h3 class="h3">{name} <small>{code}</small></h3><span class="change__level">{level}</span></div>
+      <ul>{lis}</ul><p class="change__foot">{foot}</p></article>'''
+W = lambda a, b: f'<span class="was">{a}</span> → <span class="now">{b}</span>'
+changes = ''.join([
+  change('hist', 'History', '0470', 'Minor update', [
+    ('Content and papers', 'No significant changes to teaching for 2027 and 2028.'),
+    ('Paper 2, June 2027 (Option B)', '<span class="now">How secure was the USSR\'s control over Eastern Europe, 1948–c.1989?</span>'),
+    ('Paper 2, November 2027 (Option B)', '<span class="now">Was the Treaty of Versailles fair?</span>'),
+    ('Paper 4', '1 hour, 40 marks. One question in two parts: (a) an account and (b) importance.'),
+  ], 'The Paper 2 topics for each exam series are listed on the <a href="history.html#exam">History page</a>.'),
+  change('econ', 'Economics', '0455', 'Revised', [
+    ('Paper 1', W('30 questions, 45 minutes', '40 questions, 1 hour')),
+    ('Paper 2', W('90 marks, 2 hours 15 minutes', '80 marks, 2 hours')),
+    ('Paper 2 Section A', W('30 marks', '20 marks, parts (a) to (f)')),
+    ('Assessment objectives', 'The weighting of AO3 Evaluation has decreased to 10%. AO1 and AO2 have increased.'),
+    ('New content', 'Includes changes in globalisation, recession, national minimum wage diagrams, ATC diagrams and types of merger.'),
+  ], 'New content is labelled topic by topic on the <a href="economics.html#topics">Economics page</a>.'),
+  change('geo', 'Geography', '0460', 'Revised', [
+    ('Structure', W('3 themes', '10 topics: 5 physical and 5 human')),
+    ('Paper 1', W('Geographical Themes', 'Physical Geography, 1 hour 45 minutes, 75 marks')),
+    ('Paper 2', W('Geographical Skills, 1 hour 30 minutes, 60 marks', 'Human Geography, 1 hour 45 minutes, 75 marks')),
+    ('Topics', 'Climate change is a new topic. Settlement, water and weather have been removed.'),
+    ('Terminology', W('MEDC and LEDC', 'HIC, MIC and LIC')),
+    ('Examples', W('case studies', '16 detailed specific examples')),
+  ], 'All 16 detailed specific examples are listed on the <a href="geography.html#examples">Geography page</a>.'),
+])
+doors = ''.join(f'''<a class="card door" href="{k}.html" data-spot data-reveal style="--c:var(--{c})">
+      <div class="door__top"><span class="door__code">IGCSE {code}</span><span class="door__glyph">{svg(k, 64)}</span></div>
+      <div><h3 class="h2">{n}</h3><p>{p}</p></div>
+      <span class="door__go">Start revising <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5"/></svg></span></a>'''
+  for k, n, c, code, p in [
+    ('history', 'History', 'hist', '0470', 'Core key questions, depth studies, an interactive timeline from 1919 to 1991 and model answer plans.'),
+    ('economics', 'Economics', 'econ', '0455', 'All six topics, an interactive supply and demand diagram, and guidance on analysis and evaluation.'),
+    ('geography', 'Geography', 'geo', '0460', 'All ten topics, an interactive demographic transition model and the 16 detailed specific examples.')])
+
+home_main = f'''
+<div class="scope" data-tone="dark" data-globe-scope>
+  <div class="scope__stage"><div class="globe" aria-hidden="true"></div><div class="grain"></div></div>
+  <div class="scope__content">
+    <section class="hero" aria-labelledby="hero-h">
+      <div class="wrap"><div class="hero__copy">
+        <p class="eyebrow">Cambridge IGCSE · Individuals and Societies</p>
+        <h1 class="display" id="hero-h" data-split="now">History, Economics <em>and Geography</em></h1>
+        <p class="lede">Revision notes, interactive diagrams and exam technique for Cambridge IGCSE History (0470), Economics (0455) and Geography (0460). Updated for the syllabuses examined from 2027.</p>
+        <div class="hero__cta">
+          <a class="btn btn--primary" href="#subjects">Choose a subject <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
+          <a class="btn btn--ghost" href="#changes">Syllabus changes for 2027</a>
+        </div>
+      </div></div>
+      <div class="hero__foot"><div class="wrap">
+        <div class="codes">{chip('history', 'History', 'hist', '0470')}{chip('economics', 'Economics', 'econ', '0455')}{chip('geography', 'Geography', 'geo', '0460')}</div>
+        <span class="scroll-cue"><span></span>Scroll</span>
+      </div></div>
+    </section>{lens_html}
+  </div>
+</div>
+
+<section class="section" id="subjects"><div class="wrap">
+  <header class="section-head"><p class="eyebrow">Subjects</p><h2 class="h2" data-split>Choose a subject</h2></header>
+  <div class="doors">{doors}</div>
+</div></section>
+
+<section class="section" id="changes" style="background:var(--bg-2)"><div class="wrap">
+  <header class="section-head section-head--split"><div style="display:grid;gap:20px"><p class="eyebrow">Syllabus changes</p><h2 class="h2" data-split>What has changed for 2027</h2></div>
+    <p class="lede" data-reveal>Economics and Geography have revised syllabuses for exams from 2027, with changes to the papers. History has been updated, but the content and papers are mostly the same. Check that your revision materials match the syllabus you are taking.</p></header>
+  <div class="changes">{changes}</div>
+</div></section>
+
+<section class="section" id="ladder"><div class="wrap">
+  <header class="section-head section-head--split"><div style="display:grid;gap:20px"><p class="eyebrow">Exam technique</p><h2 class="h2" data-split>Command words</h2></div>
+    <p class="lede" data-reveal>The command word tells you what kind of answer to give. In all three subjects, questions range from recalling knowledge to making a judgement. Select a level to see example questions.</p></header>
+  <div class="ladder" data-reveal></div>
+  <div class="ladder-detail" aria-live="polite"></div>
+</div></section>
+
+<section class="section" id="daily" style="background:var(--bg-2)"><div class="wrap">
+  <header class="section-head section-head--split"><div style="display:grid;gap:20px"><p class="eyebrow">Daily quiz</p><h2 class="h2" data-split>Today's six questions</h2></div>
+    <p class="lede" data-reveal>Two questions from each subject. Everyone gets the same six questions today, so you can compare scores with your classmates. After that, each set is chosen at random.</p></header>
+  <div data-mount="daily" data-reveal></div>
+</div></section>'''
+
+(ROOT / 'index.html').write_text(shell('home', 'Meridian | IGCSE I&S revision', 'Revision notes, interactive diagrams and exam technique for Cambridge IGCSE History 0470, Economics 0455 and Geography 0460, for exams from 2027.', home_main, 'home.js'))
+
+HEROES = {
+  'history': ('History', '0470', '2027–2028 syllabus', 'The twentieth century: international relations since 1919, and one depth study.', [('6', 'Core key questions'), ('60', 'marks in Paper 1'), ('3', 'components')]),
+  'economics': ('Economics', '0455', '2027–2029 syllabus', 'How consumers, firms and governments make decisions when resources are scarce.', [('6', 'topics'), ('40', 'questions in Paper 1'), ('70', '% of total marks in Paper 2')]),
+  'geography': ('Geography', '0460', '2027–2029 syllabus', 'Five physical and five human topics. Each topic includes how people manage the environment sustainably.', [('10', 'topics'), ('16', 'detailed specific examples'), ('75', 'marks in each written paper')]),
+}
+for k, (name, code, eyebrow, lede, stats) in HEROES.items():
+    main = f'''
+<section class="s-hero" data-tone="dark">
+  <div class="s-hero__art" data-art aria-hidden="true"></div>
+  <div class="grain"></div>
+  <div class="wrap">
+    <p class="eyebrow">Cambridge IGCSE · {eyebrow}</p>
+    <div class="s-hero__title"><h1 class="h1" data-split="now">{name}</h1><span class="s-hero__code">{code}</span></div>
+    <div class="s-hero__row"><p class="lede">{lede}</p>
+      <div class="s-hero__stats">{''.join(f'<div><b data-count="{n}">{n}</b><span>{t}</span></div>' for n, t in stats)}</div></div>
+  </div>
+</section>'''
+    (ROOT / f'{k}.html').write_text(shell(k, f'{name} {code} | Meridian', f'Cambridge IGCSE {name} {code} revision: assessment overview, syllabus content, an interactive diagram, exam technique, command words, flashcards and a quiz.', main, 'subject.js', k))
+print('wrote 4 pages')
