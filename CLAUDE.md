@@ -63,5 +63,6 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   and wheel-scroll, or clone the node into a fixed overlay for a screenshot.
 
 ## Not done
-- Not deployed. Publishing (e.g. GitHub Pages under `ukusliam-oss`) is public: ask first.
+- Deployed 2026-10-22 with GitHub Pages from `main` (root): https://ukusliam-oss.github.io/meridian/
+  The repo is public. Every push to `main` redeploys the live site.
 - No automated tests; checks so far were manual in the preview pane.
