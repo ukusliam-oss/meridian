@@ -13,6 +13,7 @@ export default {
   hero: { camera: { lat: 22, lon: 20, alt: 17500 } },
   ribbon: ['1980-01-01', '2027-01-01'], heroDate: '2019-01-01',
   pill: { part: 'Topic 4.1–4.4', date: 'Government and the macroeconomy' },
+  lab: './data/economics/policy-lab.js', // the policy lab follows the last scene
   syllabus: [
     { id: '4.1.1', text: 'Macroeconomic aims and conflicts' },
     { id: '4.2.1', text: 'Government budget' },

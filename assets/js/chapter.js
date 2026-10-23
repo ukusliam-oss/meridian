@@ -157,6 +157,12 @@ if (data.subject && data.status === 'draft' && $('.ch-hero .ch-wrap')) $('.ch-he
 // end of chapter: one-page summary, quick checks, every source
 $('[data-sum]').innerHTML = data.toolkit.summary.map(x => `<p>${x}</p>`).join('');
 $('[data-checks]').innerHTML = data.toolkit.checks.map(c => `<button class="sc__check" type="button" aria-expanded="false"><span class="mono"><span>Quick check</span><span>Tap</span></span><span class="q">${esc(c.q)}</span><span class="a">${esc(c.a)}</span></button>`).join('');
+// the policy lab, for chapters that name a model
+const labSec = $('#lab');
+if (labSec && data.lab) {
+  labSec.hidden = false;
+  Promise.all([import('./policy-lab.js'), import(data.lab)]).then(([{ mountPolicyLab }, { default: model }]) => mountPolicyLab($('[data-lab]'), model, { reduced }));
+}
 // definition bank and Section B practice, for chapters that have them
 const defs = $('[data-defs]');
 if (defs) { if (data.toolkit.definitions) defs.innerHTML = data.toolkit.definitions.map(d => `<dt>${esc(d.k)}</dt><dd>${esc(d.d)}</dd>`).join(''); else defs.closest('.ch-card').remove(); }
@@ -372,6 +378,8 @@ async function start() {
     const y = lenis ? lenis.scroll : scrollY;
     if (y === lastY) return; lastY = y;
     const p = progressAt(y), ep = engineP(y);
+    // past the last scene (lab, toolkit): the map's ribbon, legend and labels step aside
+    root.classList.toggle('is-past', y + innerHeight * 0.5 > holds[N - 1][1] + innerHeight * 0.35);
     if (world) world.setProgress(ep);
     updateUI(p);
     updatePanels(y, ep, p < 0 ? 0 : Math.min(N - 1, Math.round(p)));

@@ -401,3 +401,4 @@
 .sc__body .sc__table + p { margin-top: 10px; }
 .ch-lab { position: relative; z-index: 2; padding: 12vh 0 6vh; background: linear-gradient(transparent, #05060a 18%); }
 .ch-practice .pr { margin-top: 6px; }
+.is-past .ribbon, .is-past .world__legend, .is-past .world__labels { opacity: 0 !important; pointer-events: none; transition: opacity .4s; }
