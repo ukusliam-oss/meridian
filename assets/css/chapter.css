@@ -215,8 +215,8 @@
    The panel opens over its own trigger, which fades out beneath it. Their glass is a 20% indigo-to-violet tint with a
    backdrop blur and a 1px light rim; over this dark map the same glass needs a stronger blur and saturation to read as
    glass, so the map shows through softened. Rows, labels, separators, hover and the active row follow their command-item, settings-label and
-   settings-separator. Keyframes and curves are theirs: appleBlobOpen, appleContentReveal, appleItemsClip on open;
-   applePanelClose (into the trigger's box), appleBlobClose, appleContentBlurOut, appleItemsClipClose on close. */
+   settings-separator. Timing and curves are theirs (0.52s spring open, 0.32s pull-back close into the trigger's box);
+   see the motion note below for what was left out so it stays smooth. */
 .chmenu { --btn-stroke: linear-gradient(90deg, #2d257d 0%, #8e2de2 4%, #f5efff 31%, #f5efff 60%, #cbd5e1 85%, #8e2de2 100%);
   position: fixed; left: 0; top: 0; z-index: 71; width: max-content; min-width: 11.625rem; max-width: min(21rem, 100vw - 2rem);
   padding: .5rem .375rem; border-radius: 1.5rem; color: #fff; cursor: default; outline: none;
@@ -224,8 +224,8 @@
 .chmenu[hidden] { display: none !important; }
 .chmenu__surface { position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
   background: linear-gradient(90deg, rgb(45 37 125 / .26) 0, rgb(142 45 226 / .26) 49% 100%), rgb(255 255 255 / .07);
-  -webkit-backdrop-filter: blur(24px) saturate(1.9) brightness(1.08); backdrop-filter: blur(24px) saturate(1.9) brightness(1.08);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 -1px 0 rgb(255 255 255 / .04), 0 22px 48px -14px rgb(0 0 0 / .55), 0 2px 6px rgb(0 0 0 / .18); }
+  -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 -1px 0 rgb(255 255 255 / .04), 0 18px 40px -14px rgb(0 0 0 / .5); }
 .chmenu__surface::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: var(--btn-stroke);
   -webkit-mask: linear-gradient(#fff 0 0) content-box exclude, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box exclude, linear-gradient(#fff 0 0); opacity: .55; }
 .chmenu__items { position: relative; max-height: var(--chm-max, 70vh); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
@@ -245,28 +245,27 @@
 .pillnav__menu { transition: opacity .13s .2s; }
 .pillnav__menu[aria-expanded="true"] { opacity: 0; transition: opacity .15s; }
 
-.chmenu[data-state="open"] .chmenu__surface { animation: appleBlobOpen .52s cubic-bezier(.34, 1.56, .64, 1); will-change: transform, border-radius, filter; }
-.chmenu[data-state="open"] .chmenu__items { animation: appleContentReveal .36s ease-out, appleItemsClip .36s ease-out; will-change: filter, clip-path; }
-.chmenu[data-state="closed"] { animation: applePanelClose .32s cubic-bezier(.36, 0, .66, -.56) forwards; transform-origin: 0 0; will-change: transform; }
-.chmenu[data-state="closed"] .chmenu__surface { animation: appleBlobClose .3s cubic-bezier(.36, 0, .66, -.56) forwards; }
-.chmenu[data-state="closed"] .chmenu__items { animation: appleContentBlurOut .2s ease-in forwards, appleItemsClipClose .2s ease-in forwards; }
+/* Motion: their spring and timing, but only transform and opacity animate, so every frame stays on the GPU. Animating
+   filter, border-radius or clip-path under a backdrop blur over the WebGL map made the browser re-blur and repaint the
+   panel on every frame, which stuttered. The glass blur itself never changes during the motion. */
+.chmenu { will-change: transform; }
+.chmenu__surface, .chmenu__items { will-change: transform, opacity; }
+.chmenu[data-state="open"] .chmenu__surface { animation: chmSurfaceOpen .52s cubic-bezier(.34, 1.56, .64, 1); }
+.chmenu[data-state="open"] .chmenu__items { animation: chmItemsOpen .36s cubic-bezier(.22, 1, .36, 1); }
+.chmenu[data-state="closed"] { animation: applePanelClose .32s cubic-bezier(.36, 0, .66, -.56) forwards; transform-origin: 0 0; }
+.chmenu[data-state="closed"] .chmenu__surface { animation: chmSurfaceClose .3s cubic-bezier(.36, 0, .66, -.56) forwards; }
+.chmenu[data-state="closed"] .chmenu__items { animation: chmItemsClose .2s ease-in forwards; }
 @keyframes applePanelClose { 0% { transform: translate(0) scale(1); } 100% { transform: translate(var(--mx, 0), var(--my, 0)) scale(var(--msx, .5), var(--msy, .5)); } }
-@keyframes appleBlobOpen {
-  0% { border-radius: var(--br0, 50%); filter: blur(8px); opacity: 0; transform: scale(var(--b0x, .82), var(--b0y, 1.18)); }
+@keyframes chmSurfaceOpen {
+  0% { opacity: 0; transform: scale(var(--b0x, .82), var(--b0y, 1.18)); }
   35% { opacity: 1; }
-  45% { border-radius: var(--br1, 40%); filter: blur(4px); transform: scale(var(--b1x, 1.06), var(--b1y, .94)); }
-  70% { border-radius: 1.75rem; filter: blur(1px); transform: scale(var(--b2x, .98), var(--b2y, 1.02)); }
-  100% { border-radius: 1.5rem; filter: blur(0); transform: scale(1); }
+  45% { transform: scale(var(--b1x, 1.06), var(--b1y, .94)); }
+  70% { transform: scale(var(--b2x, .98), var(--b2y, 1.02)); }
+  100% { opacity: 1; transform: scale(1); }
 }
-@keyframes appleContentReveal { 0% { filter: blur(10px); } 100% { filter: blur(0); } }
-@keyframes appleItemsClip { 0% { clip-path: inset(50% round 11.25rem); } 100% { clip-path: inset(0 round 1.5rem); } }
-@keyframes appleBlobClose {
-  0% { border-radius: 1.5rem; filter: blur(0); opacity: 1; }
-  65% { border-radius: var(--br1, 40%); filter: blur(2px); opacity: 1; }
-  100% { border-radius: var(--br0, 50%); filter: blur(8px); opacity: 0; }
-}
-@keyframes appleContentBlurOut { 0% { filter: blur(0); } 100% { filter: blur(10px); } }
-@keyframes appleItemsClipClose { 0% { clip-path: inset(0 round 1.5rem); } 100% { clip-path: inset(50% round 11.25rem); } }
+@keyframes chmSurfaceClose { 0% { opacity: 1; transform: scale(1); } 65% { opacity: 1; } 100% { opacity: 0; transform: scale(var(--b0x, .82), var(--b0y, 1.18)); } }
+@keyframes chmItemsOpen { 0% { opacity: 0; transform: scale(.96); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes chmItemsClose { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.96); } }
 
 /* ── phones ─────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {

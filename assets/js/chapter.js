@@ -226,8 +226,15 @@ function setMenu(open) {
     menu.style.setProperty('--msx', b.width / r.width);
     menu.style.setProperty('--msy', b.height / r.height);
     menu.dataset.state = 'closed';
-    const done = e => { if (e.target !== menu) return; menu.removeEventListener('animationend', done); if (!menuOpen) { menu.hidden = true; delete menu.dataset.state; } };
+    // animationend can be skipped in a background tab, so a timer finishes the close too
+    let timer = 0;
+    const done = e => {
+      if (e && e.target !== menu) return;
+      menu.removeEventListener('animationend', done); clearTimeout(timer);
+      if (!menuOpen) { menu.hidden = true; delete menu.dataset.state; }
+    };
     menu.addEventListener('animationend', done);
+    timer = setTimeout(done, 450);
   }
 }
 menuBtn.addEventListener('click', () => setMenu(!menuOpen));
