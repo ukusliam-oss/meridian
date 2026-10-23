@@ -100,6 +100,10 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - **Polygon winding**: d3 fills a counter-clockwise ring as "the whole world except this". CShapes and the Berlin WFS
   use GeoJSON order, so the build rewinds and the engine checks again (`upright`); a flooded one-colour globe means this.
 - **Downloads from here are slow** (ETH ran at about 20 KB/s). Keep the inputs in `tools/.cache/` and rebuild offline.
+- **What the cloud sandbox can reach** (tested 2026-10-23): `git clone` of public GitHub repos, raw.githubusercontent.com,
+  npm, PyPI and public AWS S3 / Google Cloud buckets (Natural Earth, terrain tiles, Sentinel-2, Maxar Open Data, GOES).
+  Agency hosts (USGS, NOAA NCEI, Smithsonian, Zenodo, Cambridge, Wikimedia) are blocked. In a blobless partial clone,
+  `git ls-tree -l` fetches every blob (2.8 GB for natural-earth-raster).
 - **Jumping to a scene in the preview**: the browser restores the old scroll after reload and Lenis animates slowly in a
   hidden pane. Use `(await import('../assets/js/core.js')).lenis.scrollTo(y, { immediate: true })`, then nudge the wheel.
 - Mono labels are upper-case; wrap "c." in `<span class="lc">` so "c.1989" stays lower-case.
@@ -117,5 +121,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - Geography chapters: none yet. Research and build plan (2026-10-23, in Korean): `docs/Geography 스크롤 챕터 설계 리서치.md`,
   notes in `docs/research/geography/`. First chapter: Topic 4 Tectonic hazards. Cambridge PDFs were unreachable from the
   research sandbox, so its syllabus and mark-scheme wording is from search extracts and must be checked against the originals.
+  Materials for that chapter (2026-10-23, in Korean): `docs/Tectonic hazards 챕터 자료 수집.md`, notes in
+  `docs/research/tectonics/`: per-scene facts, the specimen Q1 structure (1·1·2·2·4·3·5·7, (c) marked with Table A), a
+  data and image manifest with what is reachable here and five downloads that must come from outside the firewall.
+  Every figure came from search snippets, not opened pages, so each needs checking before it goes live.
 - History chapters: only KQ6 exists (status draft, not yet teacher-reviewed). West Staaken is drawn inside the British
   sector (it was GDR-run from 1951). Scenes have no field yet for the plan's "exam link" layer.
