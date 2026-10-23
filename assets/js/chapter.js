@@ -196,7 +196,7 @@ const menuBtn = $('[data-menu-btn]'), menuItems = $('.chmenu__items', menu);
 // close it shrinks back into the trigger's box: --mx/--my move its corner there, --msx/--msy scale it to the trigger's size.
 function placeMenu() {
   const b = menuBtn.getBoundingClientRect(), pad = 16;
-  menu.style.setProperty("--chm-max", `${Math.min(512, Math.max(160, b.bottom - 6 - pad - 16))}px`); // compact like theirs, never past the top
+  menu.style.setProperty("--chm-max", `${Math.min(352, Math.max(160, b.bottom - 6 - pad - 16))}px`); // compact like theirs, never past the top
   const m = menu.getBoundingClientRect();
   const left = Math.min(Math.max(pad, b.left - 6), innerWidth - pad - m.width), top = Math.max(pad, b.bottom + 6 - m.height);
   menu.style.transform = ''; menu.style.left = `${left}px`; menu.style.top = `${top}px`;
@@ -208,7 +208,12 @@ function setMenu(open) {
   menuOpen = open;
   menuBtn.setAttribute('aria-expanded', open);
   if (open) {
-    menu.hidden = false; delete menu.dataset.state; placeMenu();
+    menu.hidden = false; delete menu.dataset.state;
+    const { width: W, height: H } = placeMenu();
+    // their blob deforms a 186 x 159 px panel by percentages; the same pixels on this panel keep the motion as subtle
+    const kx = 186 / W, ky = 159 / H, set = (k, v) => menu.style.setProperty(k, v.toFixed(4));
+    set('--b0x', 1 - 0.18 * kx); set('--b0y', 1 + 0.18 * ky); set('--b1x', 1 + 0.06 * kx); set('--b1y', 1 - 0.06 * ky);
+    set('--b2x', 1 - 0.02 * kx); set('--b2y', 1 + 0.02 * ky);
     menu.dataset.state = 'open';
     const cur = $('[aria-current="true"]', menu);
     if (cur) menuItems.scrollTop = cur.offsetTop - menuItems.clientHeight / 2 + cur.offsetHeight / 2;
