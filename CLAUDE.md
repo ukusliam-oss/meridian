@@ -93,5 +93,8 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - Deployed 2026-10-22 with GitHub Pages from `main` (root): https://ukusliam-oss.github.io/meridian/
   The repo is public. Every push to `main` redeploys the live site.
 - No automated tests; checks so far were manual in the preview pane.
+- Geography chapters: none yet. Research and build plan (2026-10-23, in Korean): `docs/Geography 스크롤 챕터 설계 리서치.md`,
+  notes in `docs/research/geography/`. First chapter: Topic 4 Tectonic hazards. Cambridge PDFs were unreachable from the
+  research sandbox, so its syllabus and mark-scheme wording is from search extracts and must be checked against the originals.
 - History chapters: only KQ6 exists (status draft, not yet teacher-reviewed). West Staaken is drawn inside the British
   sector (it was GDR-run from 1951). Scenes have no field yet for the plan's "exam link" layer.
