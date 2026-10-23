@@ -70,7 +70,8 @@ export default {
         title: 'Macroeconomics and the global economy', note: 'Topics 4 to 6: the whole economy, development and international trade.',
         items: [
           { code: '4', title: 'Government and the macroeconomy', meta: '4.1–4.7', points: [
-            '<b>Macroeconomic aims</b>: economic growth, full employment, stable prices, balance of payments stability and redistribution of income. Conflicts between these aims.',
+            '<b>Macroeconomic aims</b>: economic growth, full employment, stable prices, balance of payments stability, redistribution of income and <span class="tag">2027</span> environmental sustainability. Why governments choose these aims and the criteria they set for each.',
+            '<b>Conflicts between aims</b>: full employment and stable prices; economic growth and environmental sustainability; full employment and balance of payments stability.',
             '<b>Fiscal policy</b>: the government budget and types of tax (direct and indirect; progressive, regressive and proportional). <span class="tag">2027</span> Reasons for taxation are covered explicitly.',
             '<b>Monetary policy</b>: changes in interest rates, the money supply and the exchange rate.',
             '<b>Supply-side policy</b>: education and training, labour market reforms, lower direct taxes, deregulation and privatisation. <span class="tag">2027</span> Infrastructure spending is added.',

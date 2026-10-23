@@ -420,7 +420,7 @@ export default {
       parts: [
         {
           k: '(a)', m: 2, scheme: 'a', q: 'Identify two macroeconomic aims of a government.',
-          ms: { lead: '1 mark for each aim, up to 2:', points: ['Economic growth.', 'Full employment (low unemployment).', 'Stable prices (low inflation).', 'Balance of payments stability.', 'Redistribution of income.'] },
+          ms: { lead: '1 mark for each aim, up to 2:', points: ['Economic growth.', 'Full employment (low unemployment).', 'Stable prices (low inflation).', 'Balance of payments stability.', 'Redistribution of income.', 'Environmental sustainability.'] },
         },
         {
           k: '(b)', m: 4, scheme: 'b', q: 'Explain two reasons why a government levies taxes.',
@@ -432,6 +432,7 @@ export default {
               '<b>To discourage harmful products</b> (1): a tax on demerit goods such as cigarettes raises their price, so consumption falls (1).',
               '<b>To protect domestic industries</b> (1): tariffs make imports more expensive (1).',
               '<b>To influence the economy</b> (1): higher taxes reduce total demand, which can help to control inflation (1).',
+              '<b>To encourage environmental sustainability</b> (1): a tax on carbon emissions makes polluting activities more expensive, so firms and consumers switch to cleaner alternatives (1).',
             ],
             tip: 'Reasons for taxation are covered explicitly in the 2027 syllabus.',
           },
