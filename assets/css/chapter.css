@@ -211,59 +211,59 @@
 .pillnav__orb svg { position: absolute; inset: -4px; width: 48px; height: 48px; transform: rotate(-90deg); }
 .pillnav__orb circle { fill: none; stroke: #fff; stroke-width: 1.6; stroke-linecap: round; }
 
-.chmenu-scrim { position: fixed; inset: 0; z-index: 68; background: rgb(4 3 12 / .5); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  opacity: 0; visibility: hidden; transition: opacity .35s, visibility 0s linear .35s; }
-.chmenu-scrim.is-on { opacity: 1; visibility: visible; transition: opacity .35s; }
-
-/* Scene menu: the glass panel and the "blob" open and close of emotion-agency.com's settings menu (2026-10-24).
-   Surface: indigo to violet glass with a 1px gradient stroke. Open: the surface springs out of the menu button while the
-   rows unblur inside a growing clip; the section titles and numbers decode. Close: the panel shrinks back into the button. */
-.chmenu { --gradient-opacity: .62; --btn-stroke: linear-gradient(90deg, #2d257d 0%, #8e2de2 4%, #f5efff 31%, #f5efff 60%, #cbd5e1 85%, #8e2de2 100%);
-  position: fixed; left: 0; right: 0; margin: 0 auto; bottom: 90px; z-index: 69; width: min(560px, 100% - 2 * var(--gutter));
-  padding: 8px 6px; border-radius: 1.5rem; color: #fff; }
+/* Scene menu: a copy of the settings dropdown on emotion-agency.com (measured 2026-10-24, values in their rem).
+   The panel opens over its own trigger, which fades out beneath it. Their glass is 20% opaque over a lilac 3D scene;
+   on this dark page the surface uses the colours that glass actually shows on screen (sampled: #9b8cd4, #a98ee3,
+   #ad8fe3). Rows, labels, separators, hover and the active row follow their command-item, settings-label and
+   settings-separator. Keyframes and curves are theirs: appleBlobOpen, appleContentReveal, appleItemsClip on open;
+   applePanelClose (into the trigger's box), appleBlobClose, appleContentBlurOut, appleItemsClipClose on close. */
+.chmenu { --btn-stroke: linear-gradient(90deg, #2d257d 0%, #8e2de2 4%, #f5efff 31%, #f5efff 60%, #cbd5e1 85%, #8e2de2 100%);
+  position: fixed; left: 0; top: 0; z-index: 71; width: max-content; min-width: 11.625rem; max-width: min(27rem, 100vw - 2rem);
+  padding: .5rem .375rem; border-radius: 1.5rem; color: #fff; cursor: default; outline: none;
+  font: 500 .75rem/1.15 var(--mono); text-transform: uppercase; }
 .chmenu[hidden] { display: none !important; }
-.chmenu__surface { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; transform-origin: var(--ox, 50%) var(--oy, 100%);
-  background: linear-gradient(90deg, rgb(45 37 125 / var(--gradient-opacity)) 0, rgb(142 45 226 / var(--gradient-opacity)) 49% 100%), rgb(12 9 30 / .55);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2); box-shadow: 0 40px 120px -30px rgb(0 0 0 / .85); }
+.chmenu__surface { position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(90deg, rgb(155 140 212 / .94) 0, rgb(169 142 227 / .94) 49%, rgb(173 143 227 / .94) 100%);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .chmenu__surface::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: var(--btn-stroke);
   -webkit-mask: linear-gradient(#fff 0 0) content-box exclude, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box exclude, linear-gradient(#fff 0 0); }
-.chmenu__items { position: relative; max-height: min(68vh, 640px); overflow: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 4px 0;
-  border-radius: 1.5rem; -webkit-mask: linear-gradient(transparent, #000 14px, #000 calc(100% - 14px), transparent); mask: linear-gradient(transparent, #000 14px, #000 calc(100% - 14px), transparent); }
+.chmenu__items { position: relative; max-height: var(--chm-max, 70vh); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .chmenu__items::-webkit-scrollbar { display: none; }
-.chmenu h4 { padding: 10px 12px 6px; color: #cbd5e1; font-size: 11px; }
-.chmenu__sep { height: 1px; margin: 6px 12px; background: rgb(255 255 255 / .38); }
-.chmenu a { display: flex; gap: 14px; align-items: center; padding: 9px 12px; border-radius: 14px; font-size: 15px; line-height: 1.3; color: rgb(255 255 255 / .9);
-  transition: background .2s, color .2s; }
-.chmenu a:hover, .chmenu a:focus-visible { background: rgb(255 255 255 / .14); color: #fff; outline: none; }
-.chmenu a[aria-current="true"] { background: rgb(255 255 255 / .2); color: #fff; }
-.chmenu a .mono { flex: none; width: 2.2em; color: #cbd5e1; font-size: 11px; }
+.chmenu__label { padding: .375rem .5rem; color: #cbd5e1; }
+.chmenu__sep { height: 1px; margin: .25rem .5rem; background: #d1d5db; }
+.chmenu__item { display: flex; align-items: center; justify-content: space-between; gap: .75rem; height: 2.25rem; padding: .5rem; border-radius: .8125rem;
+  font: 500 .875rem/1 Inter, system-ui, sans-serif; text-transform: none; color: #fff; outline: none; user-select: none; transition: background-color .3s; }
+.chmenu__item:hover, .chmenu__item:focus-visible { background-color: rgb(245 239 255 / .5); }
+.chmenu__item[aria-current="true"] { background-color: #9047ff; }
+.chmenu__content { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.chmenu__num { flex: none; width: 1rem; font: 500 .625rem/1 var(--mono); text-align: center; color: rgb(255 255 255 / .82); }
+.chmenu__text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.chmenu__chev { flex: none; width: 1rem; height: 1rem; }
+.pillnav__menu { transition: opacity .13s .2s; }
+.pillnav__menu[aria-expanded="true"] { opacity: 0; transition: opacity .15s; }
 
-.chmenu[data-state="open"] .chmenu__surface { animation: chm-blob-open .52s cubic-bezier(.34, 1.56, .64, 1); }
-.chmenu[data-state="open"] .chmenu__items { animation: chm-reveal .36s ease-out, chm-clip .36s ease-out; }
-.chmenu[data-state="closed"] { animation: chm-panel-close .32s cubic-bezier(.36, 0, .66, -.56) forwards; transform-origin: 0 0; }
-.chmenu[data-state="closed"] .chmenu__surface { animation: chm-blob-close .3s cubic-bezier(.36, 0, .66, -.56) forwards; }
-.chmenu[data-state="closed"] .chmenu__items { animation: chm-blur-out .2s ease-in forwards, chm-clip-close .2s ease-in forwards; }
-@keyframes chm-blob-open {
+.chmenu[data-state="open"] .chmenu__surface { animation: appleBlobOpen .52s cubic-bezier(.34, 1.56, .64, 1); will-change: transform, border-radius, filter; }
+.chmenu[data-state="open"] .chmenu__items { animation: appleContentReveal .36s ease-out, appleItemsClip .36s ease-out; will-change: filter, clip-path; }
+.chmenu[data-state="closed"] { animation: applePanelClose .32s cubic-bezier(.36, 0, .66, -.56) forwards; transform-origin: 0 0; will-change: transform; }
+.chmenu[data-state="closed"] .chmenu__surface { animation: appleBlobClose .3s cubic-bezier(.36, 0, .66, -.56) forwards; }
+.chmenu[data-state="closed"] .chmenu__items { animation: appleContentBlurOut .2s ease-in forwards, appleItemsClipClose .2s ease-in forwards; }
+@keyframes applePanelClose { 0% { transform: translate(0) scale(1); } 100% { transform: translate(var(--mx, 0), var(--my, 0)) scale(var(--msx, .5), var(--msy, .5)); } }
+@keyframes appleBlobOpen {
   0% { border-radius: 50%; filter: blur(8px); opacity: 0; transform: scale(.82, 1.18); }
   35% { opacity: 1; }
   45% { border-radius: 40%; filter: blur(4px); transform: scale(1.06, .94); }
   70% { border-radius: 1.75rem; filter: blur(1px); transform: scale(.98, 1.02); }
   100% { border-radius: 1.5rem; filter: blur(0); transform: scale(1); }
 }
-@keyframes chm-blob-close {
+@keyframes appleContentReveal { 0% { filter: blur(10px); } 100% { filter: blur(0); } }
+@keyframes appleItemsClip { 0% { clip-path: inset(50% round 11.25rem); } 100% { clip-path: inset(0 round 1.5rem); } }
+@keyframes appleBlobClose {
   0% { border-radius: 1.5rem; filter: blur(0); opacity: 1; }
   65% { border-radius: 40%; filter: blur(2px); opacity: 1; }
   100% { border-radius: 50%; filter: blur(8px); opacity: 0; }
 }
-@keyframes chm-panel-close { from { transform: translate(0, 0) scale(1); } to { transform: translate(var(--mx, 0), var(--my, 0)) scale(var(--msx, .5), var(--msy, .5)); } }
-@keyframes chm-reveal { from { filter: blur(10px); } to { filter: blur(0); } }
-@keyframes chm-blur-out { from { filter: blur(0); } to { filter: blur(10px); } }
-@keyframes chm-clip { from { clip-path: inset(50% round 11.25rem); } to { clip-path: inset(0 round 1.5rem); } }
-@keyframes chm-clip-close { from { clip-path: inset(0 round 1.5rem); } to { clip-path: inset(50% round 11.25rem); } }
-/* the menu button: two lines that turn into a cross while the menu is open */
-.pillnav__menu .ln { transition: transform .3s cubic-bezier(.34, 1.56, .64, 1); transform-box: fill-box; transform-origin: center; }
-.pillnav__menu[aria-expanded="true"] .ln1 { transform: translateY(3.5px) rotate(45deg); }
-.pillnav__menu[aria-expanded="true"] .ln2 { transform: translateY(-3.5px) rotate(-45deg); }
+@keyframes appleContentBlurOut { 0% { filter: blur(0); } 100% { filter: blur(10px); } }
+@keyframes appleItemsClipClose { 0% { clip-path: inset(0 round 1.5rem); } 100% { clip-path: inset(50% round 11.25rem); } }
 
 /* ── phones ─────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
@@ -281,13 +281,11 @@
   .sc__title { font-size: 2rem; }
   .part__title { font-size: 3.4rem; }
   .pillnav__text { min-width: 0; max-width: 58vw; }
-  .chmenu { bottom: calc(env(safe-area-inset-bottom) + 142px); }
-  .chmenu__items { max-height: 60vh; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ch-cue::before { animation: none; }
   .ch-hero .ch-wrap > *, .cmp__row, .cascade li, .sc__chart .bar { opacity: 1; transform: none; transition: none; }
-  .chmenu, .chmenu *, .chmenu-scrim { animation: none !important; transition: none !important; }
+  .chmenu, .chmenu *, .pillnav__menu { animation: none !important; transition: none !important; }
 }
 @media (max-width: 520px) {
   .cmp__head, .cmp__row { grid-template-columns: 1fr 1fr; }

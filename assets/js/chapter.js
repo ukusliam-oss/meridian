@@ -187,57 +187,54 @@ document.addEventListener('click', e => {
 
 // ── scene menu and pill ───────────────────────────────────────────────────
 const menu = $('[data-menu]');
-menu.innerHTML = '<div class="chmenu__surface"></div><div class="chmenu__items">' + parts.map((p, k) => `${k ? '<div class="chmenu__sep"></div>' : ''}<h4 class="mono" data-decode>Part ${k + 1} · ${esc(p.name)}</h4>`
-  + p.scenes.map(i => `<a href="#${scenes[i].id}" data-go="${i}"><span class="mono" data-decode>${String(i + 1).padStart(2, '0')}</span><span>${esc(scenes[i].title)}</span></a>`).join('')).join('') + '</div>';
+const CHEV = '<svg class="chmenu__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18l6-6l-6-6"/></svg>';
+menu.setAttribute('role', 'menu'); menu.tabIndex = -1;
+menu.innerHTML = '<div class="chmenu__surface" aria-hidden="true"></div><div class="chmenu__items">' + parts.map((p, k) => `${k ? '<div class="chmenu__sep" role="separator"></div>' : ''}<div class="chmenu__label">Part ${k + 1} · ${esc(p.name)}</div>`
+  + p.scenes.map(i => `<a class="chmenu__item" role="menuitem" tabindex="-1" href="#${scenes[i].id}" data-go="${i}"><span class="chmenu__content"><span class="chmenu__num">${String(i + 1).padStart(2, '0')}</span><span class="chmenu__text">${esc(scenes[i].title)}</span></span>${CHEV}</a>`).join('')).join('') + '</div>';
 const menuBtn = $('[data-menu-btn]'), menuItems = $('.chmenu__items', menu);
-const scrim = document.body.appendChild(Object.assign(document.createElement('div'), { className: 'chmenu-scrim' }));
-// mono labels decode from random glyphs, left to right, as the panel opens
-const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&*+<>/';
-function decode(el, delay) {
-  const text = el.dataset.text || (el.dataset.text = el.textContent), t0 = performance.now() + delay, dur = 260 + text.length * 14;
-  const step = now => {
-    const k = Math.max(0, (now - t0) / dur);
-    el.textContent = [...text].map((c, n) => (c === ' ' || n / text.length < k ? c : GLYPHS[(Math.random() * GLYPHS.length) | 0])).join('');
-    if (k < 1) requestAnimationFrame(step); else el.textContent = text;
-  };
-  requestAnimationFrame(step);
+// Like emotion-agency's settings dropdown, the panel opens over its own trigger (which fades out beneath it), and on
+// close it shrinks back into the trigger's box: --mx/--my move its corner there, --msx/--msy scale it to the trigger's size.
+function placeMenu() {
+  const b = menuBtn.getBoundingClientRect(), pad = 16;
+  menu.style.setProperty("--chm-max", `${Math.min(512, Math.max(160, b.bottom - 6 - pad - 16))}px`); // compact like theirs, never past the top
+  const m = menu.getBoundingClientRect();
+  const left = Math.min(Math.max(pad, b.left - 6), innerWidth - pad - m.width), top = Math.max(pad, b.bottom + 6 - m.height);
+  menu.style.transform = ''; menu.style.left = `${left}px`; menu.style.top = `${top}px`;
+  return { left, top, width: m.width, height: m.height, b };
 }
 let menuOpen = false;
 function setMenu(open) {
   if (open === menuOpen) return;
   menuOpen = open;
   menuBtn.setAttribute('aria-expanded', open);
-  scrim.classList.toggle('is-on', open);
   if (open) {
-    menu.hidden = false;
-    // the surface springs out of the menu button
-    const b = menuBtn.getBoundingClientRect(), m = menu.getBoundingClientRect();
-    menu.style.setProperty('--ox', `${(b.left + b.width / 2 - m.left).toFixed(0)}px`);
-    menu.style.setProperty('--oy', `${(b.top + b.height / 2 - m.top).toFixed(0)}px`);
+    menu.hidden = false; delete menu.dataset.state; placeMenu();
     menu.dataset.state = 'open';
     const cur = $('[aria-current="true"]', menu);
     if (cur) menuItems.scrollTop = cur.offsetTop - menuItems.clientHeight / 2 + cur.offsetHeight / 2;
-    if (!reduced) {
-      const top = menuItems.scrollTop, bottom = top + menuItems.clientHeight;
-      $$('[data-decode]', menu).filter(el => { const y = el.offsetTop; return y > top - 40 && y < bottom + 40; }).forEach((el, n) => decode(el, 60 + n * 18));
-    }
-    (cur || $('a', menu)).focus({ preventScroll: true });
+    (cur || $('.chmenu__item', menu)).focus({ preventScroll: true });
   } else {
     if (reduced) { menu.hidden = true; delete menu.dataset.state; return; }
-    // the panel shrinks back into the button it came from
-    const b = menuBtn.getBoundingClientRect(), m = menu.getBoundingClientRect();
-    menu.style.setProperty('--mx', `${(b.left - m.left).toFixed(0)}px`);
-    menu.style.setProperty('--my', `${(b.top - m.top).toFixed(0)}px`);
-    menu.style.setProperty('--msx', (b.width / m.width).toFixed(3));
-    menu.style.setProperty('--msy', (b.height / m.height).toFixed(3));
+    const r = menu.getBoundingClientRect(), b = menuBtn.getBoundingClientRect();
+    menu.style.setProperty('--mx', `${b.left - r.left}px`);
+    menu.style.setProperty('--my', `${b.top - r.top}px`);
+    menu.style.setProperty('--msx', b.width / r.width);
+    menu.style.setProperty('--msy', b.height / r.height);
     menu.dataset.state = 'closed';
     const done = e => { if (e.target !== menu) return; menu.removeEventListener('animationend', done); if (!menuOpen) { menu.hidden = true; delete menu.dataset.state; } };
     menu.addEventListener('animationend', done);
   }
 }
 menuBtn.addEventListener('click', () => setMenu(!menuOpen));
-scrim.addEventListener('click', () => setMenu(false));
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && menuOpen) { setMenu(false); menuBtn.focus(); } });
+document.addEventListener('pointerdown', e => { if (menuOpen && !menu.contains(e.target) && !menuBtn.contains(e.target)) setMenu(false); });
+addEventListener('resize', () => { if (menuOpen) placeMenu(); });
+document.addEventListener('keydown', e => {
+  if (!menuOpen) return;
+  if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); setMenu(false); menuBtn.focus(); return; }
+  const items = $$('.chmenu__item', menu), k = items.indexOf(document.activeElement);
+  const to = { ArrowDown: k + 1, ArrowUp: k - 1, Home: 0, End: items.length - 1 }[e.key];
+  if (to != null) { e.preventDefault(); items[(to + items.length) % items.length].focus(); }
+});
 menu.addEventListener('click', e => {
   const a = e.target.closest('[data-go]'); if (!a) return;
   e.preventDefault(); setMenu(false); goTo(+a.dataset.go);
