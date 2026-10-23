@@ -180,6 +180,26 @@ HEROES = {
   'economics': ('Economics', '0455', '2027–2029 syllabus', 'How consumers, firms and governments make decisions when resources are scarce.', [('6', 'topics'), ('40', 'questions in Paper 1'), ('70', '% of total marks in Paper 2')]),
   'geography': ('Geography', '0460', '2027–2029 syllabus', 'Five physical and five human topics. Each topic includes how people manage the environment sustainably.', [('10', 'topics'), ('16', 'detailed specific examples'), ('75', 'marks in each written paper')]),
 }
+# History chapters told as scroll journeys over the globe (history/kq*.html), shown under the History hero
+CHAPTERS = '''
+<section class="chapters" data-tone="dark"><div class="wrap">
+  <p class="eyebrow">Scroll chapters · start here for the June 2027 Paper 2 topic</p>
+  <div class="chapters__grid">
+    <a class="chapter-card" href="history/kq6.html" data-reveal>
+      <span class="chapter-card__tag">Key question 6 · 33 scenes · about 50 minutes</span>
+      <span class="chapter-card__title"><em>How secure was</em>the USSR's control over Eastern Europe, 1948–<span class="lc">c.</span>1989?</span>
+      <span class="chapter-card__text">Travel across a globe with the real borders of each date, from the iron curtain in 1948 to the fall of the Berlin Wall.</span>
+      <span class="chapter-card__go">Open the chapter →</span>
+    </a>
+    <a class="chapter-card chapter-card--paper" href="history/kq6-paper2.html" data-reveal>
+      <span class="chapter-card__tag">Paper 2 practice · 6 sources · 40 marks</span>
+      <span class="chapter-card__title"><em>Hungary, 1956:</em>how secure was Soviet control?</span>
+      <span class="chapter-card__text">Five source questions in the Paper 2 format, with a mark scheme and two example answers for every part.</span>
+      <span class="chapter-card__go">Practise with sources →</span>
+    </a>
+  </div>
+</div></section>'''
+
 for k, (name, code, eyebrow, lede, stats) in HEROES.items():
     main = f'''
 <section class="s-hero" data-tone="dark">
@@ -191,6 +211,6 @@ for k, (name, code, eyebrow, lede, stats) in HEROES.items():
     <div class="s-hero__row"><p class="lede">{lede}</p>
       <div class="s-hero__stats">{''.join(f'<div><b data-count="{n}">{n}</b><span>{t}</span></div>' for n, t in stats)}</div></div>
   </div>
-</section>'''
+</section>''' + (CHAPTERS if k == 'history' else '')
     (ROOT / f'{k}.html').write_text(shell(k, f'{name} {code} | Meridian', f'Cambridge IGCSE {name} {code} revision: assessment overview, syllabus content, an interactive diagram, exam technique, command words, flashcards and a quiz.', main, 'subject.js', k))
 print('wrote 4 pages')

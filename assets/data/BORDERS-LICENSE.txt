@@ -1,0 +1,12 @@
+assets/data/borders.json is derived from:
+
+- CShapes 2.0 (Schvitz, Girardin, Rüegger, Weidmann, Cederman and Gleditsch, ETH Zürich), https://icr.ethz.ch/data/cshapes/,
+  licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/).
+  State borders 1945–1992, simplified and converted to TopoJSON.
+- Natural Earth land (via the world-atlas package), public domain.
+- Geoportal Berlin: "Verlauf der Berliner Mauer, 1989" (Forum für Geschichte und Gegenwart e.V.) and "ALKIS Berlin Ortsteile",
+  both under Datenlizenz Deutschland Zero 2.0 (https://www.govdata.de/dl-de/zero-2-0). The 1945 sectors were built by grouping Ortsteile.
+
+The derived file is shared under CC BY-NC-SA 4.0. Rebuild it with: npm run maps (inputs in tools/.cache/, see CLAUDE.md).
+
+assets/data/relief-world.jpg and relief-europe.jpg are from Natural Earth SR_50M shaded relief (public domain), resized and cropped.

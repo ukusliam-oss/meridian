@@ -34,7 +34,27 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - `src/globe.js` → `assets/js/globe.js` — the home globe (three 0.186, custom shaders), driven by
   `setProgress(f)`: 0 hero, 1 History, 2 Economics, 3 Geography.
 
+## History scroll chapters (plan: `../Meridian History 설계 계획서.md`)
+- `history/kq6.html` — KQ6 chapter: 33 scenes over one globe. `assets/js/chapter.js` renders the scenes from
+  `assets/js/data/history/kq6.js` and turns scroll into globe progress (a scene holds while its panel is on the reading
+  line; the camera flies in the gaps). `assets/css/chapter.css` is the type system ported from emotion-agency.com
+  (light serif capitals with an italic lead word, Plex Mono capitals, violet pill tags, glass pill navigator).
+- `history/kq6-paper2.html` + `assets/js/paper2.js` — Paper 2 room from `kq6-paper2.js` (sources on paper cards).
+  The History hub links both through `CHAPTERS` in `tools/pages.py`.
+- `src/world/engine.js` → `assets/js/world.js` (`npm run world`). Per scene: a 2048 world texture plus a sharp detail
+  texture around the camera target, cross-faded in the shader; relief from `assets/data/relief-{world,europe}.jpg`;
+  borders, arrows, the iron curtain (real FRG/AUT vs GDR/CSK/HUN borders, via topojson mesh) and the Wall as tubes.
+  `city: 'berlin'` paints the 1945 sectors, West Berlin and the border strip; `kind: 'wall'` draws the real 1989 route.
+- `tools/build-maps.mjs` (`npm run maps`) → `assets/data/borders.json`. Inputs go in `tools/.cache/` (gitignored):
+  CShapes 2.0 (`icr.ethz.ch/data/cshapes/CShapes-2.0.geojson`, CC BY-NC-SA 4.0), and from `gdi.berlin.de` the WFS
+  layers `berlinermauer:a_grenzmauer|b_hinterlandmauer|d_grenzstreifen` and `alkis_ortsteile:ortsteile`
+  (both Datenlizenz Deutschland Zero 2.0). It keeps only state versions valid on a scene date of some
+  `assets/js/data/history/kq*.js`, so rerun it after adding a chapter. Relief: Natural Earth SR_50M via `sips`.
+
 ## Measured facts
+- History chapter (2026-10-23): borders.json 414 KB (315 state versions, Europe detailed, rest coarse, Berlin layers);
+  relief 174 + 366 KB; world.js 582 KB. Painting one scene's textures takes 55–120 ms on the dev Mac (Berlin about
+  265 ms), so neighbours are painted in idle time while the reader reads. Checked in the preview at desktop and 375 px.
 - Globe bundle 595 KB, 163 KB gzipped; 5,748 land dots from Natural Earth 110m.
 - Vendored: GSAP 3.15 (+ScrollTrigger, SplitText, Flip, DrawSVG, CustomEase), Lenis 1.3.27,
   Inter (48 KB) and Instrument Serif (2 × 21 KB).
@@ -62,7 +82,16 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - **Lenis undoes `window.scrollTo`** in the preview. To reach a section, click its sub-nav link
   and wheel-scroll, or clone the node into a fixed overlay for a screenshot.
 
+- **Polygon winding**: d3 fills a counter-clockwise ring as "the whole world except this". CShapes and the Berlin WFS
+  use GeoJSON order, so the build rewinds and the engine checks again (`upright`); a flooded one-colour globe means this.
+- **Downloads from here are slow** (ETH ran at about 20 KB/s). Keep the inputs in `tools/.cache/` and rebuild offline.
+- **Jumping to a scene in the preview**: the browser restores the old scroll after reload and Lenis animates slowly in a
+  hidden pane. Use `(await import('../assets/js/core.js')).lenis.scrollTo(y, { immediate: true })`, then nudge the wheel.
+- Mono labels are upper-case; wrap "c." in `<span class="lc">` so "c.1989" stays lower-case.
+
 ## Not done
 - Deployed 2026-10-22 with GitHub Pages from `main` (root): https://ukusliam-oss.github.io/meridian/
   The repo is public. Every push to `main` redeploys the live site.
 - No automated tests; checks so far were manual in the preview pane.
+- History chapters: only KQ6 exists (status draft, not yet teacher-reviewed). West Staaken is drawn inside the British
+  sector (it was GDR-run from 1951). Scenes have no field yet for the plan's "exam link" layer.

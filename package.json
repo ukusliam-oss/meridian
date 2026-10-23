@@ -6,6 +6,8 @@
   "scripts": {
     "dots": "node tools/build-dots.mjs 18000",
     "build": "npm run dots && esbuild src/globe.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/globe.js",
+    "maps": "node tools/build-maps.mjs",
+    "world": "esbuild src/world/engine.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/world.js",
     "serve": "python3 -m http.server 5183"
   },
   "devDependencies": {
@@ -13,6 +15,8 @@
     "esbuild": "0.28.2",
     "three": "0.186.1",
     "topojson-client": "3.1.0",
+    "topojson-server": "^3.0.1",
+    "topojson-simplify": "^3.0.3",
     "world-atlas": "2.0.2"
   }
 }
