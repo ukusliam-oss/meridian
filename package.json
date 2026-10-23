@@ -7,8 +7,9 @@
     "dots": "node tools/build-dots.mjs 18000",
     "build": "npm run dots && esbuild src/globe.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/globe.js",
     "maps": "node tools/build-maps.mjs",
-    "world": "esbuild src/world/engine.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/world.js",
-    "serve": "python3 -m http.server 5183"
+    "world": "esbuild src/world/index.js --bundle --minify --format=esm --target=es2020 --outfile=assets/js/world.js",
+    "serve": "python3 -m http.server 5183",
+    "lint": "node tools/lint-chapters.mjs"
   },
   "devDependencies": {
     "d3-geo": "3.1.1",

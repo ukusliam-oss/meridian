@@ -49,9 +49,9 @@ const states = read('tools/.cache/cshapes-2.0.geojson').features.map(f => {
 // keep only state versions that some chapter scene (or a hero) actually shows
 const dir = 'assets/js/data/history';
 const dates = new Set();
-for (const f of readdirSync(dir).filter(f => /^kq\d\.js$/.test(f))) {
+for (const f of readdirSync(dir).filter(f => /^kq\d+\.js$/.test(f))) {
   const ch = (await import(pathToFileURL(`${dir}/${f}`).href)).default;
-  for (const s of ch.scenes || []) dates.add(s.map.borders);
+  for (const s of ch.scenes || []) if (s.map.borders) dates.add(s.map.borders);
 }
 const used = states.filter(f => [...dates].some(d => f.properties.from <= d && d < f.properties.to));
 
