@@ -51,23 +51,45 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   (both Datenlizenz Deutschland Zero 2.0). It keeps only state versions valid on a scene date of some
   `assets/js/data/history/kq*.js`, so rerun it after adding a chapter. Relief: Natural Earth SR_50M via `sips`.
 
-## Economics scroll chapter (work in progress)
-- `economics/macro-policy.html` (Topic 4.1–4.4) reuses `chapter.js`: `<body data-chapter>` names the data file, and
-  anything the file leaves out falls back to KQ6's values. It currently loads `assets/js/data/economics/engine-test.js`,
-  an engine test with placeholder text. Not linked from the site yet.
-- Scene maps can colour every country by an indicator (`map.data`), raise spikes (`map.spikes`), step through several
-  years in one panel (`years: [...]`), and show line charts (`chart.series` of points) and chains (`chain.steps`).
-  Colour scales and default domains: `RAMP` and `DOMAIN` in `src/world/engine.js`.
-- `tools/build-econ.mjs` → `assets/data/countries-modern.json` (Natural Earth 50m, ISO3 keys) and
-  `assets/data/econ.json` (IMF WEO October 2026, BIS policy rates, OWID Gini and CO2). Inputs cached in `tools/.cache/`.
-- `assets/js/data/economics/policy-lab.js`: the policy-lab model (draft, not teacher-reviewed). Its reader,
-  `assets/js/policy-lab.js`, does not exist yet.
+## Economics scroll chapter (Topic 4.1–4.4, draft)
+- `economics/macro-policy.html` reuses `chapter.js`: `<body data-chapter>` names the data file
+  (`assets/js/data/economics/macro-policy.js`, 41 scenes, status draft); anything a chapter leaves out falls back to KQ6's
+  values. Linked from the Economics hub through `ECON_CHAPTERS` in `tools/pages.py`. Case notes and URLs:
+  `../Meridian Economics research notes.md` (outside the repo).
+- Scene maps can colour countries by an indicator (`map.data`), raise needles (`map.spikes`), step through years in one
+  panel (`years: [...]`, all engine scenes of a panel share `panel` and every texture), and show focus outlines with live
+  value labels. Panels add line charts (`chart.series` items may be `{ label, ind, iso, from, to }`, read from econ.json),
+  chains (`chain.steps`, `chain.globe` = the step that sends the map's flows), `evaluation`, `judgement`, `compare`, `cascade`.
+- Toolkit adds `definitions` and `practiceSets` (rendered by `practice.js` with the schemes of `practice-economics.js`).
+- Policy lab: `assets/js/policy-lab.js` + `assets/css/policy-lab.css` read `data/economics/policy-lab.js`; mounted in
+  `#lab` when the chapter names `lab`. Classes are `plab__*` because site.css already owns `.lab`.
+- `economics/engine-test.html` (unlinked, noindex) runs `engine-test.js`, one scene per engine feature.
+- `tools/build-econ.mjs` → `countries-modern.json` (Natural Earth 50m, ISO3 keys, IMF names shortened for labels) and
+  `econ.json` (IMF WEO October 2026, BIS policy rates, OWID Gini and CO₂). Axes are stored as ranges:
+  `years: [first, last]`, `months: ['YYYY-MM', 'YYYY-MM']`.
+- Checks before committing: `node tools/check-econ.mjs` (fields, sources, indicators and ISO3 codes, syllabus coverage,
+  no em dashes; it also runs `tools/check-lab.mjs`, which checks every model effect against the direction table).
+
+## World engine
+- `src/world/engine.js` → `assets/js/world.js`, `src/world/paint-worker.js` → `assets/js/world-paint.js` (`npm run world`
+  builds both); `src/world/paint.js` is shared. Painting runs in the worker (OffscreenCanvas), else in idle time.
+  Textures are stored bottom-up and uploaded with flipY off.
+- Data maps are coloured in the shader: an id texture (country index + 1, scanline-filled, no antialiasing) and a float
+  value texture (one row per engine scene). Four taps are coloured then filtered, so borders stay smooth. Years in one
+  panel blend the values themselves. KQ6's painted fills are unchanged.
+- A frame is drawn only when progress, size, a texture or a dashed line can change. `world.stats` holds paint times and
+  frame CPU; `window.__meridianWorld` exposes it in the preview. `prepare(i)` paints and builds overlays in idle time.
+- `chapter.js` keys its ticker on the scroll position, not the scene index (a held panel keeps the same index while its
+  years, chain steps and chart move).
 
 ## Measured facts
 - History chapter (2026-10-23): borders.json 414 KB (315 state versions, Europe detailed, rest coarse, Berlin layers);
   relief 174 + 366 KB; world.js 582 KB. Painting one scene's textures takes 55–120 ms on the dev Mac (Berlin about
   265 ms), so neighbours are painted in idle time while the reader reads. Checked in the preview at desktop and 375 px.
 - Globe bundle 595 KB, 163 KB gzipped; 5,748 land dots from Natural Earth 110m.
+- Engine (2026-10-23, dev Mac, preview): id rasters 17–59 ms and Economics paints 160–207 ms, all in the worker; KQ6
+  paints 9–19 ms in the worker. A scripted scroll through the engine test drew 202 frames at 0.88 ms CPU on average
+  (worst 16 ms) and skipped 73 unchanged frames. The preview pane throttles rAF, so fps itself was not measured.
 - Vendored: GSAP 3.15 (+ScrollTrigger, SplitText, Flip, DrawSVG, CustomEase), Lenis 1.3.27,
   Inter (48 KB) and Instrument Serif (2 × 21 KB).
 - Checked in the preview on 2026-10-22: home lenses, all three labs and every mode, flashcards,
@@ -104,6 +126,8 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 ## Not done
 - Deployed 2026-10-22 with GitHub Pages from `main` (root): https://ukusliam-oss.github.io/meridian/
   The repo is public. Every push to `main` redeploys the live site.
-- No automated tests; checks so far were manual in the preview pane.
+- No automated browser tests; the data checks are `tools/check-econ.mjs` and `tools/check-lab.mjs`.
+- Economics: the chapter and the lab are drafts, not yet reviewed by an Economics teacher. The Section A data room
+  (`economics/data-room.html`) from the plan is not built. Nothing of the Economics chapter is deployed yet.
 - History chapters: only KQ6 exists (status draft, not yet teacher-reviewed). West Staaken is drawn inside the British
   sector (it was GDR-run from 1951). Scenes have no field yet for the plan's "exam link" layer.

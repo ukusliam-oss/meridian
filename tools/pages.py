@@ -200,6 +200,27 @@ CHAPTERS = '''
   </div>
 </div></section>'''
 
+# Economics chapter (economics/macro-policy.html), shown under the Economics hero
+ECON_CHAPTERS = '''
+<section class="chapters" data-tone="dark"><div class="wrap">
+  <p class="eyebrow">Scroll chapter · Topic 4.1–4.4 · draft, not yet reviewed by a teacher</p>
+  <div class="chapters__grid">
+    <a class="chapter-card" href="economics/macro-policy.html" data-reveal>
+      <span class="chapter-card__tag">Government and the macroeconomy · 41 scenes · about 60 minutes</span>
+      <span class="chapter-card__title"><em>How do governments</em>manage the whole economy?</span>
+      <span class="chapter-card__text">The six aims, the conflicts between them, and fiscal, monetary and supply-side policy, on a globe coloured with real IMF data.</span>
+      <span class="chapter-card__go">Open the chapter →</span>
+    </a>
+    <a class="chapter-card chapter-card--paper" href="economics/macro-policy.html#lab" data-reveal>
+      <span class="chapter-card__tag">Policy lab · 5 tools · 6 aims</span>
+      <span class="chapter-card__title"><em>Try it:</em>move the policies, watch the aims</span>
+      <span class="chapter-card__text">Replay the 2009 recession and the 2022 inflation, or test your own policy. A simplified model for learning, not a forecast.</span>
+      <span class="chapter-card__go">Open the lab →</span>
+    </a>
+  </div>
+</div></section>'''
+SUBJECT_CHAPTERS = {'history': CHAPTERS, 'economics': ECON_CHAPTERS}
+
 for k, (name, code, eyebrow, lede, stats) in HEROES.items():
     main = f'''
 <section class="s-hero" data-tone="dark">
@@ -211,6 +232,6 @@ for k, (name, code, eyebrow, lede, stats) in HEROES.items():
     <div class="s-hero__row"><p class="lede">{lede}</p>
       <div class="s-hero__stats">{''.join(f'<div><b data-count="{n}">{n}</b><span>{t}</span></div>' for n, t in stats)}</div></div>
   </div>
-</section>''' + (CHAPTERS if k == 'history' else '')
+</section>''' + SUBJECT_CHAPTERS.get(k, '')
     (ROOT / f'{k}.html').write_text(shell(k, f'{name} {code} | Meridian', f'Cambridge IGCSE {name} {code} revision: assessment overview, syllabus content, an interactive diagram, exam technique, command words, flashcards and a quiz.', main, 'subject.js', k))
 print('wrote 4 pages')
