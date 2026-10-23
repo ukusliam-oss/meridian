@@ -187,12 +187,57 @@ document.addEventListener('click', e => {
 
 // ── scene menu and pill ───────────────────────────────────────────────────
 const menu = $('[data-menu]');
-menu.innerHTML = parts.map((p, k) => `<h4 class="mono">Part ${k + 1} · ${esc(p.name)}</h4>`
-  + p.scenes.map(i => `<a href="#${scenes[i].id}" data-go="${i}"><span class="mono">${String(i + 1).padStart(2, '0')}</span><span>${esc(scenes[i].title)}</span></a>`).join('')).join('');
-const menuBtn = $('[data-menu-btn]');
-const setMenu = open => { menu.hidden = !open; menuBtn.setAttribute('aria-expanded', open); };
-menuBtn.addEventListener('click', () => setMenu(menu.hidden));
-document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
+menu.innerHTML = '<div class="chmenu__surface"></div><div class="chmenu__items">' + parts.map((p, k) => `${k ? '<div class="chmenu__sep"></div>' : ''}<h4 class="mono" data-decode>Part ${k + 1} · ${esc(p.name)}</h4>`
+  + p.scenes.map(i => `<a href="#${scenes[i].id}" data-go="${i}"><span class="mono" data-decode>${String(i + 1).padStart(2, '0')}</span><span>${esc(scenes[i].title)}</span></a>`).join('')).join('') + '</div>';
+const menuBtn = $('[data-menu-btn]'), menuItems = $('.chmenu__items', menu);
+const scrim = document.body.appendChild(Object.assign(document.createElement('div'), { className: 'chmenu-scrim' }));
+// mono labels decode from random glyphs, left to right, as the panel opens
+const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&*+<>/';
+function decode(el, delay) {
+  const text = el.dataset.text || (el.dataset.text = el.textContent), t0 = performance.now() + delay, dur = 260 + text.length * 14;
+  const step = now => {
+    const k = Math.max(0, (now - t0) / dur);
+    el.textContent = [...text].map((c, n) => (c === ' ' || n / text.length < k ? c : GLYPHS[(Math.random() * GLYPHS.length) | 0])).join('');
+    if (k < 1) requestAnimationFrame(step); else el.textContent = text;
+  };
+  requestAnimationFrame(step);
+}
+let menuOpen = false;
+function setMenu(open) {
+  if (open === menuOpen) return;
+  menuOpen = open;
+  menuBtn.setAttribute('aria-expanded', open);
+  scrim.classList.toggle('is-on', open);
+  if (open) {
+    menu.hidden = false;
+    // the surface springs out of the menu button
+    const b = menuBtn.getBoundingClientRect(), m = menu.getBoundingClientRect();
+    menu.style.setProperty('--ox', `${(b.left + b.width / 2 - m.left).toFixed(0)}px`);
+    menu.style.setProperty('--oy', `${(b.top + b.height / 2 - m.top).toFixed(0)}px`);
+    menu.dataset.state = 'open';
+    const cur = $('[aria-current="true"]', menu);
+    if (cur) menuItems.scrollTop = cur.offsetTop - menuItems.clientHeight / 2 + cur.offsetHeight / 2;
+    if (!reduced) {
+      const top = menuItems.scrollTop, bottom = top + menuItems.clientHeight;
+      $$('[data-decode]', menu).filter(el => { const y = el.offsetTop; return y > top - 40 && y < bottom + 40; }).forEach((el, n) => decode(el, 60 + n * 18));
+    }
+    (cur || $('a', menu)).focus({ preventScroll: true });
+  } else {
+    if (reduced) { menu.hidden = true; delete menu.dataset.state; return; }
+    // the panel shrinks back into the button it came from
+    const b = menuBtn.getBoundingClientRect(), m = menu.getBoundingClientRect();
+    menu.style.setProperty('--mx', `${(b.left - m.left).toFixed(0)}px`);
+    menu.style.setProperty('--my', `${(b.top - m.top).toFixed(0)}px`);
+    menu.style.setProperty('--msx', (b.width / m.width).toFixed(3));
+    menu.style.setProperty('--msy', (b.height / m.height).toFixed(3));
+    menu.dataset.state = 'closed';
+    const done = e => { if (e.target !== menu) return; menu.removeEventListener('animationend', done); if (!menuOpen) { menu.hidden = true; delete menu.dataset.state; } };
+    menu.addEventListener('animationend', done);
+  }
+}
+menuBtn.addEventListener('click', () => setMenu(!menuOpen));
+scrim.addEventListener('click', () => setMenu(false));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && menuOpen) { setMenu(false); menuBtn.focus(); } });
 menu.addEventListener('click', e => {
   const a = e.target.closest('[data-go]'); if (!a) return;
   e.preventDefault(); setMenu(false); goTo(+a.dataset.go);
