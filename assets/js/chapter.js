@@ -5,9 +5,10 @@
 
 import { $, $$, gsap, lenis, reduced, boot, esc } from './core.js';
 const { default: data } = await import(document.body.dataset.chapter || './data/history/kq6.js');
+const usesValues = data.scenes.some(s => (s.map && (s.map.data || s.map.spikes)) || (s.chart && (s.chart.series || []).some(sr => sr.ind)));
 const CFG = {
   borders: data.borders === 'modern' ? '../assets/data/countries-modern.json' : '../assets/data/borders.json',
-  values: data.scenes.some(s => s.map && (s.map.data || s.map.spikes)) ? '../assets/data/econ.json' : null,
+  values: usesValues ? '../assets/data/econ.json' : null,
   hero: data.hero || { lat: 47, lon: 24, alt: 15500 },
   ribbon: data.ribbon || ['1945-01-01', '1992-01-01'],
   heroDate: data.heroDate || '1948-01-01',
@@ -15,6 +16,9 @@ const CFG = {
   relief: data.relief || { world: '../assets/data/relief-world.jpg', europe: '../assets/data/relief-europe.jpg', europeBox: [-15, 30, 65, 75] },
   accent: data.accent || null,
 };
+
+// indicator values: chart series that name an indicator are drawn from them, so no figure is typed twice
+const VALUES = CFG.values ? await fetch(CFG.values).then(r => r.json()).then(j => j.indicators).catch(() => null) : null;
 
 const root = document.documentElement;
 const scenes = data.scenes;
@@ -35,8 +39,26 @@ const partOf = i => parts.findIndex(p => p.scenes.includes(i));
 
 const toYear = x => (typeof x === 'string' ? (([y, m]) => y + ((m || 1) - 1) / 12)(x.split('-').map(Number)) : x);
 const SERIES = ['var(--acc)', '#9db7ff', '#ffd59a', '#ff8a7a'];
-function lineChart(c) {
+// econ.json stores an indicator's axis as a range: years [first, last] or months ['YYYY-MM', 'YYYY-MM']
+function axisOf(ind) {
+  if (ind.years) { const out = []; for (let y = ind.years[0]; y <= ind.years[1]; y++) out.push(y); return out; }
+  const [y0, m0] = ind.months[0].split('-').map(Number), [y1, m1] = ind.months[1].split('-').map(Number), out = [];
+  for (let k = 0; k <= (y1 - y0) * 12 + (m1 - m0); k++) { const t = (m0 - 1) + k; out.push(`${y0 + Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, '0')}`); }
+  return out;
+}
+// { label, ind, iso, from, to } → points from econ.json (years, or 'YYYY-MM' for monthly series)
+function resolveSeries(sr) {
+  if (!sr.ind) return sr;
+  const ind = VALUES && VALUES[sr.ind], row = ind && ind.values[sr.iso];
+  if (!row) return { ...sr, points: [] };
+  const xs = axisOf(ind), from = toYear(sr.from ?? xs[0]), to = toYear(sr.to ?? xs.at(-1));
+  const points = xs.map((x, n) => [x, row[n]]).filter(([x, v]) => v != null && toYear(x) >= from && toYear(x) <= to);
+  return { unit: ind.unit, ...sr, points };
+}
+function lineChart(c, id) {
   const W = 460, H = 220, L = 34, R = 16, T = 16, B = 24;
+  c = { ...c, series: c.series.map(resolveSeries).filter(sr => sr.points.length) };
+  if (!c.series.length) return '';
   const all = c.series.flatMap(sr => sr.points.map(([x, y]) => [toYear(x), y])).filter(d => d[1] != null);
   const xs = all.map(d => d[0]), ys = all.map(d => d[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
@@ -52,21 +74,24 @@ function lineChart(c) {
   const lines = ends.map(({ k, pts, y }) => {
     const sr = c.series[k];
     const d = pts.map(([x, yy], n) => `${n ? 'L' : 'M'}${X(x).toFixed(1)} ${Yp(yy).toFixed(1)}`).join('');
-    return `<path d="${d}" class="lc-line" style="--c:${sr.color || SERIES[k % 4]};--k:${k}" pathLength="1"/>`
+    return `<path d="${d}" class="lc-line" style="--c:${sr.color || SERIES[k % 4]}" clip-path="url(#lc-${id})"/>`
       + `<text x="${W - 2}" y="${y.toFixed(1)}" text-anchor="end" class="mono lc-lab" fill="${sr.color || SERIES[k % 4]}">${esc(sr.label)}</text>`;
   }).join('');
   const marks = (c.marks || []).map(m => `<line x1="${X(toYear(m.x)).toFixed(1)}" x2="${X(toYear(m.x)).toFixed(1)}" y1="${T}" y2="${H - B}" class="lc-mark"/><text x="${(X(toYear(m.x)) + 4).toFixed(1)}" y="${T + 10}" class="mono lc-t">${esc(m.label)}</text>`).join('');
   const unit = c.unit || c.series[0].unit || '';
   const src = c.source ? (data.sources[c.source] ? `<a class="src mono" href="#src-${c.source}">${srcNo(c.source)}</a>` : esc(c.source)) : '';
-  return `<figure class="sc__chart sc__lc"><figcaption class="mono">${esc(c.title || c.series.map(sr => sr.label).join(', '))}${unit ? ' · ' + esc(unit) : ''}</figcaption>
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.title || 'Chart')}">${grid.join('')}${yrs.join('')}${marks}${lines}</svg>
+  // the lines are revealed by a clip that follows the scroll (or the map's year), with a cursor at the edge
+  const clip = `<clipPath id="lc-${id}"><rect x="0" y="0" width="${W}" height="${H}" data-clip/></clipPath>`;
+  const cursor = `<g class="lc-cur" data-cursor><line y1="${T}" y2="${H - B}"/><text y="${T - 4}" text-anchor="middle" class="mono lc-t"></text></g>`;
+  return `<figure class="sc__chart sc__lc" data-lc data-x0="${x0}" data-x1="${x1}" data-l="${L}" data-r="${W - R}"><figcaption class="mono">${esc(c.title || c.series.map(sr => sr.label).join(', '))}${unit ? ' · ' + esc(unit) : ''}</figcaption>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.title || 'Chart')}"><defs>${clip}</defs>${grid.join('')}${yrs.join('')}${marks}${lines}${cursor}</svg>
     ${c.note || src ? `<figcaption class="mono">${esc(c.note || 'Source')} ${src}</figcaption>` : ''}</figure>`;
 }
 function chain(c) {
-  return `<div class="sc__block"><span class="sc__label mono">${esc(c.title || 'Chain of analysis')}</span><ol class="chain2">${c.steps.map((x, k) => `<li style="--k:${k}"><span class="mono">${k + 1}</span><span>${esc(x)}</span></li>`).join('')}</ol></div>`;
+  return `<div class="sc__block"><span class="sc__label mono">${esc(c.title || 'Chain of analysis')}</span><ol class="chain2" data-chain>${c.steps.map((x, k) => `<li${k === c.globe ? ' class="is-globe"' : ''}><span class="mono">${k + 1}</span><span>${esc(x)}</span></li>`).join('')}</ol></div>`;
 }
-function chart(c) {
-  if (c.series && c.series[0] && !Array.isArray(c.series[0])) return lineChart(c);
+function chart(c, id) {
+  if (c.series && c.series[0] && !Array.isArray(c.series[0])) return lineChart(c, id);
   const W = 460, H = 190, max = Math.max(...c.series.map(d => d[1]));
   const bw = W / c.series.length;
   const bars = c.series.map(([x, v], k) => {
@@ -115,7 +140,7 @@ function sceneHTML(s, i) {
       <p class="sc__date">${esc(s.dateLabel)}</p>
       <h2 class="display sc__title">${title(s.title)}</h2>
       <div class="sc__body">${s.body}</div>
-      ${s.chart ? chart(s.chart) : ''}${s.chain ? chain(s.chain) : ''}${s.compare ? compare(s.compare) : ''}${s.cascade ? cascade(s.cascade) : ''}
+      ${s.chart ? chart(s.chart, s.id) : ''}${s.chain ? chain(s.chain) : ''}${s.compare ? compare(s.compare) : ''}${s.cascade ? cascade(s.cascade) : ''}
       <div class="sc__block sc__why"><span class="sc__label mono">Why it matters</span><p>${esc(s.why)}</p></div>
       ${s.evaluation && s.evaluation.length ? `<div class="sc__block"><span class="sc__label mono">It depends on</span><ul class="sc__eval">${s.evaluation.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
       ${mis}${judge}
@@ -127,6 +152,7 @@ function sceneHTML(s, i) {
 }
 
 $('[data-scenes]').innerHTML = scenes.map(sceneHTML).join('');
+if (data.subject && data.status === 'draft' && $('.ch-hero .ch-wrap')) $('.ch-hero .ch-wrap').insertAdjacentHTML('beforeend', '<p class="mono ch-draft">Draft · not yet reviewed by a teacher</p>');
 
 // end of chapter: one-page summary, quick checks, every source
 $('[data-sum]').innerHTML = data.toolkit.summary.map(x => `<p>${x}</p>`).join('');
@@ -252,12 +278,9 @@ async function loadBorders() {
   return JSON.parse(new TextDecoder().decode(await new Blob(chunks).arrayBuffer()));
 }
 
-// one engine scene per year of a multi-year map; arrows and lines only on the last year, value labels on focus countries
-function buildEngineScenes(borders, values) {
-  const obj = borders.objects.countries;
-  const info = new Map(obj ? obj.geometries.map(g => [g.properties.key, g.properties]) : []);
+// one engine scene per year of a multi-year map, all with the same `panel`; arrows and lines only on the last year
+function buildEngineScenes() {
   eScenes = []; base = []; span = [];
-  const fmt = v => (Math.abs(v) >= 100 ? Math.round(v) : +v.toFixed(1)).toLocaleString('en-GB');
   scenes.forEach((s, k) => {
     const spec = s.map.spikes || s.map.data;
     const steps = spec && Array.isArray(spec.years) && spec.years.length > 1 ? spec.years : [spec ? (spec.years ? spec.years[0] : spec.year ?? spec.month) : null];
@@ -268,38 +291,62 @@ function buildEngineScenes(borders, values) {
       if (map.data) map.data = { ...map.data, year: when.year ?? map.data.year };
       if (map.spikes) map.spikes = { ...map.spikes, ...when };
       if (n < steps.length - 1) { map.arrows = []; map.flows = []; map.lines = []; }
-      if (values && spec && (map.focus || []).length && info.size) {
-        const ind = values[spec.id], unit = ind && ind.unit.startsWith('%') ? '%' : '';
-        const extra = map.focus.map(key => {
-          const p = info.get(key); if (!p) return null;
-          return { at: [p.lat, p.lon], label: p.name, key };
-        }).filter(Boolean);
-        map.markers = [...(map.markers || []), ...extra.map(m => ({ ...m, label: `${m.label}${(() => { const v = valueAt(values, { ...spec, ...when }, m.key); return v == null ? '' : ' · ' + fmt(v) + unit; })()}` }))];
-      }
-      eScenes.push({ ...s, map });
+      eScenes.push({ ...s, map, panel: k });
     });
   });
   const h = data.hero && data.hero.camera ? data.hero : { camera: CFG.hero };
-  hero = { camera: h.camera, map: { ...eScenes[0].map, markers: [], arrows: [], flows: [], lines: [] } };
+  hero = { camera: h.camera, map: { ...eScenes[0].map, markers: [], arrows: [], flows: [], lines: [], focus: [] } };
 }
-// same lookup as the engine's valueOf, kept here so labels can be built before the engine loads
-function valueAt(values, spec, key) {
-  const ind = values[spec.id]; if (!ind) return null; const row = ind.values[key]; if (!row) return null;
-  if (ind.months) {
-    const [y, m] = String(spec.month || `${spec.year}-12`).split('-').map(Number), [y0, m0] = ind.months[0].split('-').map(Number);
-    let i = (y - y0) * 12 + (m - m0); while (i >= 0 && row[i] == null) i--; return i >= 0 ? row[i] : null;
+// the map's year inside panel k at engine progress ep, blended like the engine blends the colours
+const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const yearOfE = e => { const sp = e && (e.map.data || e.map.spikes); return sp ? (sp.month ? toYear(sp.month) : sp.year) : null; };
+function mapYear(k, ep) {
+  const u = Math.max(0, Math.min(span[k] - 1, ep - base[k])), n = Math.floor(u), f = u - n;
+  const a = yearOfE(eScenes[base[k] + n]), b = yearOfE(eScenes[base[k] + Math.min(span[k] - 1, n + 1)]);
+  return a == null ? null : a + (b - a) * (reduced ? (f < 0.5 ? 0 : 1) : smooth(0.1, 0.9, f));
+}
+
+// ── scroll-linked panel effects: chain steps, chart reveal and cursor, the flows a chain sends ─────
+const fx = scenes.map((s, k) => {
+  const sec = sections[k];
+  const chainEl = sec.querySelector('[data-chain]'), lc = sec.querySelector('[data-lc]');
+  return {
+    steps: chainEl ? [...chainEl.children] : [], globe: s.chain && s.chain.globe != null ? s.chain.globe : null,
+    lc: lc && { el: lc, x0: +lc.dataset.x0, x1: +lc.dataset.x1, l: +lc.dataset.l, r: +lc.dataset.r, clip: lc.querySelector('[data-clip]'), cur: lc.querySelector('[data-cursor]'), last: '' },
+  };
+});
+// panel progress: 0 when the panel reaches the reading line, 1 when it leaves; negative while it approaches
+function panelT(k, y) { const c = y + innerHeight * 0.5; return (c - holds[k][0]) / Math.max(1, holds[k][1] - holds[k][0]); }
+const stepAt = (n, count) => -0.3 + n * (0.65 / Math.max(1, count));
+function updatePanels(y, ep, near) {
+  for (let k = Math.max(0, near - 1); k <= Math.min(N - 1, near + 1); k++) {
+    const e = fx[k], t = panelT(k, y);
+    e.steps.forEach((li, n) => li.classList.toggle('is-on', reduced || t >= stepAt(n, e.steps.length)));
+    if (e.globe != null && world) world.setGate(k, reduced ? (t >= stepAt(e.globe, e.steps.length) ? 1 : 0) : smooth(stepAt(e.globe, e.steps.length), stepAt(e.globe, e.steps.length) + 0.18, t));
+    if (e.lc) {
+      // a chart beside a map that steps through years follows the map; any other chart draws as its panel arrives
+      const yr = span[k] > 1 ? mapYear(k, ep) : null;
+      const x = reduced ? e.lc.x1 : yr != null ? Math.min(e.lc.x1, Math.max(e.lc.x0, yr)) : e.lc.x0 + (e.lc.x1 - e.lc.x0) * smooth(-0.35, 0.25, t);
+      const px = e.lc.l + (x - e.lc.x0) / Math.max(1e-6, e.lc.x1 - e.lc.x0) * (e.lc.r - e.lc.l);
+      const key = px.toFixed(1); if (key === e.lc.last) continue; e.lc.last = key;
+      e.lc.clip.setAttribute('width', (px + 1).toFixed(1));
+      const done = x >= e.lc.x1 - 1e-6;
+      e.lc.el.classList.toggle('is-done', done);
+      e.lc.cur.style.opacity = yr != null && !done ? 1 : 0;
+      e.lc.cur.setAttribute('transform', `translate(${px.toFixed(1)} 0)`);
+      if (yr != null) e.lc.cur.querySelector('text').textContent = String(Math.round(yr));
+    }
   }
-  let i = spec.year - ind.years[0]; if (ind.latestOnly) { while (i >= 0 && row[i] == null) i--; return i >= 0 ? row[i] : null; }
-  return row[i] ?? null;
 }
 
 async function start() {
   setPct(0.02);
   try {
-    const [{ createWorld }, borders, values] = await Promise.all([import('./world.js'), loadBorders(), CFG.values ? fetch(CFG.values).then(r => r.json()).then(j => j.indicators) : null]);
-    buildEngineScenes(borders, values);
+    const [{ createWorld }, borders] = await Promise.all([import('./world.js'), loadBorders()]);
+    buildEngineScenes();
     setPct(0.96);
-    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, values, accent: CFG.accent, reduced, relief: CFG.relief });
+    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief });
+    window.__meridianWorld = world; // stats for checks in the preview
     if (!world) root.classList.add('no-webgl');
   } catch (err) {
     if (!eScenes.length) { base = scenes.map((_, k) => k); span = scenes.map(() => 1); eScenes = scenes; }
@@ -308,16 +355,19 @@ async function start() {
   }
   setPct(1);
   measure();
-  let lastP = NaN;
+  // keyed on the scroll position, not the scene: inside a held panel the scene stays the same while years and steps move
+  let lastY = NaN;
   gsap.ticker.add(() => {
-    const y = lenis ? lenis.scroll : scrollY, p = progressAt(y);
-    if (p === lastP) return; lastP = p;
-    if (world) world.setProgress(engineP(y));
+    const y = lenis ? lenis.scroll : scrollY;
+    if (y === lastY) return; lastY = y;
+    const p = progressAt(y), ep = engineP(y);
+    if (world) world.setProgress(ep);
     updateUI(p);
+    updatePanels(y, ep, p < 0 ? 0 : Math.min(N - 1, Math.round(p)));
   });
-  addEventListener('resize', () => { measure(); lastP = NaN; });
-  document.fonts?.ready.then(() => { measure(); lastP = NaN; });
-  new ResizeObserver(() => { measure(); lastP = NaN; }).observe($('[data-scenes]'));
+  addEventListener('resize', () => { measure(); lastY = NaN; });
+  document.fonts?.ready.then(() => { measure(); lastY = NaN; });
+  new ResizeObserver(() => { measure(); lastY = NaN; }).observe($('[data-scenes]'));
   requestAnimationFrame(() => { loader.classList.add('is-done'); root.classList.add('is-ready'); });
   boot();
   if (location.hash) { const k = scenes.findIndex(s => '#' + s.id === location.hash); if (k >= 0) setTimeout(() => goTo(k), 400); }

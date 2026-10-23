@@ -52,6 +52,13 @@ const FIX = { KOS: 'UVK', SOL: 'SOM', IOA: 'AUS', ATC: 'AUS' };
 const imfNames = JSON.parse(await cached('imf-countries.json', 'https://www.imf.org/external/datamapper/api/v1/countries')).countries;
 
 const keyOf = p => FIX[p.ADM0_A3] || (p.ISO_A3_EH !== '-99' ? p.ISO_A3_EH : null);
+// IMF names, shortened for map labels the way IMF tables print them ("Korea", "China"), never renamed otherwise
+const SHORT = {
+  "China, People's Republic of": 'China', 'Korea, Republic of': 'Korea', "Korea, Dem. People's Rep. of": 'Korea, DPR',
+  'Congo, Dem. Rep. of the': 'DR Congo', 'Congo, Republic of': 'Congo', 'Gambia, The': 'The Gambia', 'Bahamas, The': 'The Bahamas',
+  'Micronesia, Fed. States of': 'Micronesia', 'United States Virgin Islands': 'US Virgin Islands',
+};
+const shortName = n => { n = n.trim(); return SHORT[n] || n.replace(/, Republic of$/, ''); };
 const iso2 = {};
 const byKey = new Map();
 for (const f of NE.features) {
@@ -59,7 +66,7 @@ for (const f of NE.features) {
   if (!key) continue;
   if (p.ISO_A2_EH && p.ISO_A2_EH !== '-99') iso2[p.ISO_A2_EH] = key;
   const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
-  if (!byKey.has(key)) byKey.set(key, { name: imfNames[key]?.label || p.NAME_EN || p.NAME, polys: [] });
+  if (!byKey.has(key)) byKey.set(key, { name: shortName(imfNames[key]?.label || p.NAME_EN || p.NAME), polys: [] });
   byKey.get(key).polys.push(...polys);
 }
 const countries = [];

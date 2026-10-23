@@ -347,15 +347,20 @@
 .lc-grid { stroke: rgb(255 255 255 / .08); stroke-width: 1; }
 .lc-grid.is-zero { stroke: rgb(255 255 255 / .32); }
 .lc-t { fill: rgb(255 255 255 / .55); font-size: 10px; }
-.lc-lab { font-size: 10.5px; }
+.lc-lab { font-size: 10.5px; opacity: 0; transition: opacity .4s var(--ease); }
+.sc__lc.is-done .lc-lab, .no-motion .lc-lab { opacity: 1; }
+.lc-cur { transition: opacity .3s; opacity: 0; }
+.lc-cur line { stroke: rgb(255 255 255 / .6); stroke-width: 1; }
+.lc-cur text { fill: #fff; font-size: 10px; }
 .lc-mark { stroke: rgb(255 255 255 / .35); stroke-dasharray: 3 4; }
-.lc-line { fill: none; stroke: var(--c); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
-.sc.is-active .lc-line, .no-motion .lc-line { stroke-dashoffset: 0; transition: stroke-dashoffset 1.6s var(--ease) calc(var(--k) * .25s); }
+.lc-line { fill: none; stroke: var(--c); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
 
 .chain2 { display: grid; gap: 0; margin-top: 8px; }
 .chain2 li { position: relative; display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; padding: 9px 0; font-size: 15px; line-height: 1.45;
-  opacity: .35; transform: translateX(-6px); transition: opacity .5s var(--ease) calc(var(--k) * .18s), transform .5s var(--ease) calc(var(--k) * .18s); }
-.sc.is-active .chain2 li, .no-motion .chain2 li { opacity: 1; transform: none; }
+  opacity: .35; transform: translateX(-6px); transition: opacity .45s var(--ease), transform .45s var(--ease); }
+.chain2 li.is-on, .no-motion .chain2 li { opacity: 1; transform: none; }
+.chain2 li.is-globe > .mono { background: color-mix(in oklab, var(--acc) 22%, transparent); }
+.chain2 li.is-globe.is-on > .mono { box-shadow: 0 0 0 4px color-mix(in oklab, var(--acc) 18%, transparent); }
 .chain2 li > .mono { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: var(--acc); border: 1px solid color-mix(in oklab, var(--acc) 55%, transparent); font-size: 11px; }
 .chain2 li:not(:last-child)::after { content: ""; position: absolute; left: 12px; top: 36px; bottom: -6px; width: 1px; background: color-mix(in oklab, var(--acc) 40%, transparent); }
 .sc__eval { display: grid; gap: 8px; margin-top: 8px; }
@@ -364,3 +369,22 @@
 
 .world__spk { margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: rgb(255 255 255 / .8) !important; }
 .world__spk i { width: 3px; height: 14px; border-radius: 2px; background: linear-gradient(var(--acc), #fff); }
+
+/* legend layers cross-fade when the indicator changes; the year rolls when it changes */
+.world__lg { transition: opacity .35s var(--ease), transform .35s var(--ease); }
+.world__legend .world__lg + .world__lg { position: absolute; inset: 14px 16px 12px; }
+.world__lg.is-in { opacity: 0; transform: translateY(6px); }
+.world__lg.is-out { opacity: 0; transform: translateY(-6px); }
+.world__ind { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
+.world__yr { position: relative; display: inline-grid; overflow: hidden; height: 1.3em; vertical-align: bottom; }
+.world__yr b { grid-area: 1 / 1; font-weight: 500; color: #fff; transition: transform .38s var(--ease), opacity .38s var(--ease); }
+.world__yr b.is-in { transform: translateY(100%); opacity: 0; }
+.world__yr b.is-out { transform: translateY(-100%); opacity: 0; }
+.world__fc { color: rgb(255 255 255 / .62); }
+.world__rampbox { position: relative; }
+.world__tick { position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px; background: #fff; border-radius: 1px; box-shadow: 0 0 0 1px rgb(6 7 12 / .7); }
+.world__tick span { position: absolute; bottom: calc(15px + var(--row, 0) * 11px); left: 50%; transform: translateX(-50%); font: 500 9.5px/1 var(--mono, ui-monospace, monospace); color: #fff; letter-spacing: .04em; }
+.world__rampbox .world__ramp { margin-top: calc(22px + var(--rows, 0) * 11px); transition: margin-top .3s var(--ease); }
+.world__marker b { padding: 5px 7px; margin-left: -6px; border-radius: 0 7px 7px 0; background: color-mix(in oklab, var(--acc, #a084ee) 32%, rgb(6 7 12 / .8)); color: #fff; font-size: 11px; font-weight: 500; }
+.world__marker.is-left b { margin-left: 0; margin-right: -6px; border-radius: 7px 0 0 7px; }
+.ch-draft { margin-top: 18px; display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid rgb(255 255 255 / .18); color: rgb(255 255 255 / .75); font-size: 11px; }
