@@ -48,6 +48,15 @@ export default {
   question: 'How secure was the USSR\'s control over Eastern Europe, 1948–c.1989?',
   status: 'draft',
 
+  // page setup read by chapter.js: ribbon axis, hero camera, the world layer and its data (paths from the site root)
+  axis: { from: '1945-01-01', to: '1992-01-01', hero: '1948-01-01' },
+  hero: { camera: { lat: 47, lon: 24, alt: 15500 } },
+  world: {
+    layer: 'history', data: 'assets/data/borders.json',
+    relief: { world: 'assets/data/relief-world.jpg', europe: 'assets/data/relief-europe.jpg', europeBox: [-15, 30, 65, 75] },
+  },
+  partLeads: { Epilogue: 'After' },
+
   focusPoints: [
     { id: 'FP1', text: 'Why was there opposition to Soviet control in Hungary in 1956 and Czechoslovakia in 1968, and how did the USSR react to this opposition?' },
     { id: 'FP2', text: 'How similar were events in Hungary in 1956 and in Czechoslovakia in 1968?' },
@@ -419,6 +428,7 @@ export default {
         kind: 'bar',
         title: 'Refugees from East Germany, 1950–1963',
         unit: 'people per year',
+        mark: { x: 1962, label: 'Wall built' },
         series: [
           [1950, 197788], [1951, 165648], [1952, 182393], [1953, 331390], [1954, 184198], [1955, 252870],
           [1956, 279189], [1957, 261622], [1958, 204092], [1959, 143917], [1960, 199188], [1961, 207026],

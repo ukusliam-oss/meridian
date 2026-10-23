@@ -1,9 +1,12 @@
-// History chapter page: renders the scenes of one key question from its data file and drives the globe.
-// Scroll position becomes globe progress p (scene index + fraction); the date ribbon and the pill follow it.
+// Chapter page: renders the scenes of one chapter from its data file (named by <body data-chapter>, e.g.
+// "history/kq6") and drives the globe. Scroll position becomes globe progress p (scene index + fraction) and hold
+// progress u (how far through the current scene's hold); the date ribbon and the pill follow them.
 // The text works without WebGL: if the globe cannot start, the page is still a complete chapter.
 
 import { $, $$, gsap, lenis, reduced, boot, esc } from './core.js';
-import data from './data/history/kq6.js';
+
+const { default: data } = await import(`./data/${document.body.dataset.chapter}.js`);
+const site = new URL('../../', import.meta.url); // data paths in chapter files are relative to the site root
 
 const root = document.documentElement;
 const scenes = data.scenes;
@@ -21,22 +24,23 @@ const title = t => {
 const parts = [];
 scenes.forEach((s, i) => { if (!parts.length || parts.at(-1).name !== s.part) parts.push({ name: s.part, first: i, scenes: [] }); parts.at(-1).scenes.push(i); });
 const partOf = i => parts.findIndex(p => p.scenes.includes(i));
+const focusIds = new Set((data.focusPoints || []).map(f => f.id));
 
 function chart(c) {
   const W = 460, H = 190, max = Math.max(...c.series.map(d => d[1]));
-  const bw = W / c.series.length;
+  const bw = W / c.series.length, mark = c.mark, mk = mark ? c.series.findIndex(d => d[0] === mark.x) : -1;
   const bars = c.series.map(([x, v], k) => {
     const h = (v / max) * (H - 28);
-    const wall = x >= 1962;
-    return `<rect class="bar" style="--k:${k}" x="${(k * bw + 3).toFixed(1)}" y="${(H - 18 - h).toFixed(1)}" width="${(bw - 6).toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${wall ? '#ffffff' : '#b693ff'}" opacity="${wall ? .55 : .9}"/>`
-      + (k % 2 === 0 || wall ? `<text x="${(k * bw + bw / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle" class="mono" fill="rgba(255,255,255,.55)" font-size="10">${String(x).slice(2)}</text>` : '');
+    const after = mark && x >= mark.x; // bars from the marked year on are drawn pale
+    return `<rect class="bar" style="--k:${k};fill:${after ? '#ffffff' : 'var(--acc)'}" x="${(k * bw + 3).toFixed(1)}" y="${(H - 18 - h).toFixed(1)}" width="${(bw - 6).toFixed(1)}" height="${h.toFixed(1)}" rx="2" opacity="${after ? .55 : .9}"/>`
+      + (k % 2 === 0 || after ? `<text x="${(k * bw + bw / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle" class="mono" fill="rgba(255,255,255,.55)" font-size="10">${String(x).slice(2)}</text>` : '');
   }).join('');
   const peak = c.series.reduce((a, b) => (b[1] > a[1] ? b : a));
   return `<figure class="sc__chart"><figcaption class="mono">${esc(c.title)} · ${esc(c.unit)}</figcaption>
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.title)}">${bars}
       <text x="${W}" y="12" text-anchor="end" class="mono" fill="#fff" font-size="10.5">Peak ${peak[0]}: ${peak[1].toLocaleString('en-GB')}</text>
-      <text x="${(c.series.findIndex(d => d[0] === 1962) * bw + 3).toFixed(1)}" y="${H - 58}" class="mono" fill="#fff" font-size="10">Wall built</text>
-      <path d="M${(c.series.findIndex(d => d[0] === 1962) * bw + bw / 2).toFixed(1)} ${H - 52}v14" stroke="#fff" stroke-width="1"/></svg>
+      ${mk >= 0 ? `<text x="${(mk * bw + 3).toFixed(1)}" y="${H - 58}" class="mono" fill="#fff" font-size="10">${esc(mark.label)}</text>
+      <path d="M${(mk * bw + bw / 2).toFixed(1)} ${H - 52}v14" stroke="#fff" stroke-width="1"/>` : ''}</svg>
     <figcaption class="mono">${esc(c.note)} <a class="src mono" href="#src-${c.src}">${srcNo(c.src)}</a></figcaption></figure>`;
 }
 
@@ -53,8 +57,8 @@ function sceneHTML(s, i) {
   const pi = partOf(i), part = parts[pi];
   const opener = part.first === i ? `<header class="part ch-wrap" data-part="${pi}">
       <span class="tag mono">Part ${pi + 1} of ${parts.length}</span>
-      <h2 class="display part__title"><em>${pi === parts.length - 1 ? 'After' : 'Part ' + (pi + 1)}</em>${esc(s.part)}</h2>
-      <div class="part__fps mono">${[...new Set(part.scenes.flatMap(k => scenes[k].syllabus).filter(t => t.startsWith('FP')))].sort()
+      <h2 class="display part__title"><em>${esc(data.partLeads?.[s.part] || 'Part ' + (pi + 1))}</em>${esc(s.part)}</h2>
+      <div class="part__fps mono">${[...new Set(part.scenes.flatMap(k => scenes[k].syllabus).filter(t => focusIds.has(t)))].sort()
         .map(t => `<span>${t} · ${esc(data.focusPoints.find(f => f.id === t).text)}</span>`).join('')}</div>
     </header>` : '';
   const judge = s.judgement ? `<div class="sc__block"><span class="sc__label mono">Judgement</span><div class="sc__judge">
@@ -126,33 +130,37 @@ function measure() {
   });
   heroAnchor = vh * 0.5;
 }
+// [p, u]: u runs 0 → 1 through a scene's hold, stays 1 in the gap after it, and is 0 for the hero
 function progressAt(y) {
   const c = y + innerHeight * 0.5;
-  if (c < holds[0][0]) return -1 + Math.max(0, (c - heroAnchor) / (holds[0][0] - heroAnchor));
+  if (c < holds[0][0]) return [-1 + Math.max(0, (c - heroAnchor) / (holds[0][0] - heroAnchor)), 0];
   for (let k = 0; k < N; k++) {
-    if (c <= holds[k][1]) return k;
-    if (k < N - 1 && c < holds[k + 1][0]) return k + (c - holds[k][1]) / (holds[k + 1][0] - holds[k][1]);
+    const [a, b] = holds[k];
+    if (c <= b) return [k, b > a ? Math.min(1, Math.max(0, (c - a) / (b - a))) : 1];
+    if (k < N - 1 && c < holds[k + 1][0]) return [k + (c - b) / (holds[k + 1][0] - b), 1];
   }
-  return N - 1;
+  return [N - 1, 1];
 }
 function goTo(i) {
+  world?.prepare(i); // paint the destination before the flight, so nothing is painted on the way
   const y = holds[i][0] - innerHeight * 0.5 + 4;
   if (lenis) lenis.scrollTo(y, { duration: 1.6, easing: t => 1 - Math.pow(1 - t, 4) }); else scrollTo({ top: y, behavior: reduced ? 'auto' : 'smooth' });
 }
 
 // ── date ribbon ───────────────────────────────────────────────────────────
 const dayNum = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
-const T0 = dayNum('1945-01-01'), T1 = dayNum('1992-01-01');
+const T0 = dayNum(data.axis.from), T1 = dayNum(data.axis.to);
 const ribbon = $('[data-ribbon]'), track = $('[data-track]');
 track.innerHTML = scenes.map((s, i) => `<i class="ribbon__tick${parts.some(p => p.first === i) ? ' is-part' : ''}" style="left:${((dayNum(s.date) - T0) / (T1 - T0) * 100).toFixed(2)}%"></i>`).join('') + '<i class="ribbon__needle" data-needle></i>';
 const needle = $('[data-needle]'), yearEl = $('[data-year]'), labelEl = $('[data-label]');
 const pillPart = $('[data-pill-part]'), pillDate = $('[data-pill-date]'), orb = $('[data-orb]');
 const ORB = 2 * Math.PI * 22;
+const pillPart0 = pillPart.innerHTML, pillDate0 = pillDate.innerHTML; // the page's own titles, shown over the hero
 let lastShown = -2;
 function updateUI(p) {
   const i = Math.max(0, Math.floor(p)), f = p - Math.floor(p);
   const near = p < 0 ? 0 : Math.min(N - 1, Math.round(p));
-  const da = p < 0 ? dayNum('1948-01-01') : dayNum(scenes[i].date);
+  const da = p < 0 ? dayNum(data.axis.hero || scenes[0].date) : dayNum(scenes[i].date);
   const db = p < 0 ? dayNum(scenes[0].date) : dayNum(scenes[Math.min(N - 1, i + 1)].date);
   const d = da + (db - da) * (p < 0 ? Math.max(0, p + 1) : f);
   needle.style.left = `${((d - T0) / (T1 - T0) * 100).toFixed(2)}%`;
@@ -163,26 +171,26 @@ function updateUI(p) {
     lastShown = key;
     const s = scenes[near];
     labelEl.textContent = s.dateLabel;
-    pillPart.textContent = p < -0.5 ? 'Key question 6' : `${s.part} · ${String(near + 1).padStart(2, '0')}/${N}`;
-    if (p < -0.5) pillDate.innerHTML = 'Eastern Europe, 1948–<span class="lc">c.</span>1989'; else pillDate.textContent = s.dateLabel;
+    if (p < -0.5) { pillPart.innerHTML = pillPart0; pillDate.innerHTML = pillDate0; }
+    else { pillPart.textContent = `${s.part} · ${String(near + 1).padStart(2, '0')}/${N}`; pillDate.textContent = s.dateLabel; }
     $$('[data-go]', menu).forEach(a => a.setAttribute('aria-current', +a.dataset.go === near));
     sections.forEach((sec, k) => sec.classList.toggle('is-active', key >= 0 && k === near));
     // paint the neighbouring scenes while the reader is reading, so no paint lands mid-flight
-    if (world) [near + 1, near - 1, near + 2].forEach((k, n) => idle(() => world.prepare(k), n * 120));
+    if (world) [near + 1, near - 1, near + 2].forEach(k => world.prefetch(k));
   }
   orb.style.strokeDashoffset = (ORB * (1 - Math.max(0, (p + 1) / N))).toFixed(1);
 }
 
 // ── globe ─────────────────────────────────────────────────────────────────
-const idle = (f, delay = 0) => setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 1200 }) : f()), delay);
 let world = null;
-const hero = { camera: { lat: 47, lon: 24, alt: 15500 }, map: { ...scenes[0].map, markers: [], arrows: [], lines: [] } };
+const hero = { camera: data.hero.camera, map: { ...scenes[0].map, markers: [], arrows: [], lines: [] } };
 const loader = $('[data-loader]'), pct = $('[data-pct]'), bar = $('[data-bar]');
 const setPct = v => { const n = Math.round(v * 100); pct.textContent = String(n).padStart(3, '0') + '%'; bar.style.width = n + '%'; };
 
-async function loadBorders() {
-  const res = await fetch('../assets/data/borders.json');
-  if (!res.ok || !res.body) throw new Error('borders');
+const url = path => new URL(path, site).href;
+async function loadData(path) {
+  const res = await fetch(url(path));
+  if (!res.ok || !res.body) throw new Error(path);
   const total = +res.headers.get('content-length') || 660000;
   const reader = res.body.getReader(); const chunks = []; let got = 0;
   for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); got += value.length; setPct(Math.min(0.92, got / Math.max(total, got) * 0.92)); }
@@ -192,12 +200,12 @@ async function loadBorders() {
 async function start() {
   setPct(0.02);
   try {
-    const [{ createWorld }, borders] = await Promise.all([import('./world.js'), loadBorders()]);
+    const w = data.world;
+    const [mod, json] = await Promise.all([import('./world.js'), w.data ? loadData(w.data) : null]);
     setPct(0.96);
-    world = await createWorld($('[data-world]'), {
-      scenes, hero, data: borders, reduced,
-      relief: { world: '../assets/data/relief-world.jpg', europe: '../assets/data/relief-europe.jpg', europeBox: [-15, 30, 65, 75] },
-    });
+    const layers = { history: d => [mod.historyLayer(d)] }[w.layer]?.(json) || [];
+    const relief = w.relief && { ...w.relief, world: w.relief.world && url(w.relief.world), europe: w.relief.europe && url(w.relief.europe) };
+    world = await mod.createWorld($('[data-world]'), { scenes, hero, layers, relief, reduced });
     if (!world) root.classList.add('no-webgl');
   } catch (err) {
     console.warn('Globe unavailable:', err);
@@ -205,12 +213,13 @@ async function start() {
   }
   setPct(1);
   measure();
-  let lastP = NaN;
+  let lastP = NaN, lastU = NaN;
   gsap.ticker.add(() => {
-    const p = progressAt(lenis ? lenis.scroll : scrollY);
-    if (p === lastP) return; lastP = p;
-    if (world) world.setProgress(p);
-    updateUI(p);
+    const [p, u] = progressAt(lenis ? lenis.scroll : scrollY);
+    if (p === lastP && u === lastU) return;
+    if (world) world.setProgress(p, u);
+    if (p !== lastP) updateUI(p);
+    lastP = p; lastU = u;
   });
   addEventListener('resize', () => { measure(); lastP = NaN; });
   document.fonts?.ready.then(() => { measure(); lastP = NaN; });

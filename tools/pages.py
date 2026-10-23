@@ -180,8 +180,8 @@ HEROES = {
   'economics': ('Economics', '0455', '2027–2029 syllabus', 'How consumers, firms and governments make decisions when resources are scarce.', [('6', 'topics'), ('40', 'questions in Paper 1'), ('70', '% of total marks in Paper 2')]),
   'geography': ('Geography', '0460', '2027–2029 syllabus', 'Five physical and five human topics. Each topic includes how people manage the environment sustainably.', [('10', 'topics'), ('16', 'detailed specific examples'), ('75', 'marks in each written paper')]),
 }
-# History chapters told as scroll journeys over the globe (history/kq*.html), shown under the History hero
-CHAPTERS = '''
+# Scroll chapters over the globe (<subject>/*.html), shown under each subject's hero
+CHAPTERS = {'history': '''
 <section class="chapters" data-tone="dark"><div class="wrap">
   <p class="eyebrow">Scroll chapters · start here for the June 2027 Paper 2 topic</p>
   <div class="chapters__grid">
@@ -198,7 +198,7 @@ CHAPTERS = '''
       <span class="chapter-card__go">Practise with sources →</span>
     </a>
   </div>
-</div></section>'''
+</div></section>'''}
 
 for k, (name, code, eyebrow, lede, stats) in HEROES.items():
     main = f'''
@@ -211,6 +211,6 @@ for k, (name, code, eyebrow, lede, stats) in HEROES.items():
     <div class="s-hero__row"><p class="lede">{lede}</p>
       <div class="s-hero__stats">{''.join(f'<div><b data-count="{n}">{n}</b><span>{t}</span></div>' for n, t in stats)}</div></div>
   </div>
-</section>''' + (CHAPTERS if k == 'history' else '')
+</section>''' + CHAPTERS.get(k, '')
     (ROOT / f'{k}.html').write_text(shell(k, f'{name} {code} | Meridian', f'Cambridge IGCSE {name} {code} revision: assessment overview, syllabus content, an interactive diagram, exam technique, command words, flashcards and a quiz.', main, 'subject.js', k))
 print('wrote 4 pages')

@@ -45,7 +45,7 @@ export function scrollToEl(el, offset = navOffset()) {
 export function reveal(scope = document) {
   const els = $$('[data-reveal]:not([data-revealed])', scope);
   els.forEach(el => el.setAttribute('data-revealed', ''));
-  if (reduced) { gsap.set(els, { opacity: 1 }); return; }
+  if (reduced) { if (els.length) gsap.set(els, { opacity: 1 }); return; }
   ScrollTrigger.batch(els, {
     start: 'top 92%', once: true,
     onEnter: batch => gsap.fromTo(batch,
