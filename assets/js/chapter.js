@@ -1,9 +1,20 @@
-// History chapter page: renders the scenes of one key question from its data file and drives the globe.
+// Scroll chapter page (History and Economics): renders the scenes of one chapter from its data file and drives the globe.
 // Scroll position becomes globe progress p (scene index + fraction); the date ribbon and the pill follow it.
 // The text works without WebGL: if the globe cannot start, the page is still a complete chapter.
+// The page names its data file in <body data-chapter>; anything a chapter does not set falls back to KQ6's values.
 
 import { $, $$, gsap, lenis, reduced, boot, esc } from './core.js';
-import data from './data/history/kq6.js';
+const { default: data } = await import(document.body.dataset.chapter || './data/history/kq6.js');
+const CFG = {
+  borders: data.borders === 'modern' ? '../assets/data/countries-modern.json' : '../assets/data/borders.json',
+  values: data.scenes.some(s => s.map && (s.map.data || s.map.spikes)) ? '../assets/data/econ.json' : null,
+  hero: data.hero || { lat: 47, lon: 24, alt: 15500 },
+  ribbon: data.ribbon || ['1945-01-01', '1992-01-01'],
+  heroDate: data.heroDate || '1948-01-01',
+  pill: data.pill || { part: 'Key question 6', date: 'Eastern Europe, 1948–<span class="lc">c.</span>1989' },
+  relief: data.relief || { world: '../assets/data/relief-world.jpg', europe: '../assets/data/relief-europe.jpg', europeBox: [-15, 30, 65, 75] },
+  accent: data.accent || null,
+};
 
 const root = document.documentElement;
 const scenes = data.scenes;
@@ -22,7 +33,40 @@ const parts = [];
 scenes.forEach((s, i) => { if (!parts.length || parts.at(-1).name !== s.part) parts.push({ name: s.part, first: i, scenes: [] }); parts.at(-1).scenes.push(i); });
 const partOf = i => parts.findIndex(p => p.scenes.includes(i));
 
+const toYear = x => (typeof x === 'string' ? (([y, m]) => y + ((m || 1) - 1) / 12)(x.split('-').map(Number)) : x);
+const SERIES = ['var(--acc)', '#9db7ff', '#ffd59a', '#ff8a7a'];
+function lineChart(c) {
+  const W = 460, H = 220, L = 34, R = 16, T = 16, B = 24;
+  const all = c.series.flatMap(sr => sr.points.map(([x, y]) => [toYear(x), y])).filter(d => d[1] != null);
+  const xs = all.map(d => d[0]), ys = all.map(d => d[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  let y0 = Math.min(0, ...ys), y1 = Math.max(...ys);
+  const step = [0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100].find(st => (y1 - y0) / st <= 5) || 200;
+  y0 = Math.floor(y0 / step) * step; y1 = Math.ceil(y1 / step) * step;
+  const X = x => L + (x - x0) / Math.max(1e-6, x1 - x0) * (W - L - R), Yp = y => T + (1 - (y - y0) / (y1 - y0)) * (H - T - B);
+  const grid = []; for (let v = y0; v <= y1 + 1e-9; v += step) grid.push(`<line x1="${L}" x2="${W - R}" y1="${Yp(v).toFixed(1)}" y2="${Yp(v).toFixed(1)}" class="lc-grid${v === 0 ? ' is-zero' : ''}"/><text x="${L - 6}" y="${(Yp(v) + 3.5).toFixed(1)}" text-anchor="end" class="mono lc-t">${+v.toFixed(1)}</text>`);
+  const yrs = []; const ys0 = Math.ceil(x0), span = Math.floor(x1) - ys0, every = span > 14 ? 5 : span > 6 ? 2 : 1;
+  for (let y = ys0; y <= x1; y += every) yrs.push(`<text x="${X(y).toFixed(1)}" y="${H - 6}" text-anchor="middle" class="mono lc-t">${y}</text>`);
+  const ends = c.series.map((sr, k) => { const pts = sr.points.map(([x, y]) => [toYear(x), y]).filter(d => d[1] != null); return { k, pts, y: Yp(pts.at(-1)[1]) - 7 }; });
+  ends.slice().sort((a, b) => a.y - b.y).forEach((e, n, arr) => { if (n && e.y - arr[n - 1].y < 12) e.y = arr[n - 1].y + 12; });
+  const lines = ends.map(({ k, pts, y }) => {
+    const sr = c.series[k];
+    const d = pts.map(([x, yy], n) => `${n ? 'L' : 'M'}${X(x).toFixed(1)} ${Yp(yy).toFixed(1)}`).join('');
+    return `<path d="${d}" class="lc-line" style="--c:${sr.color || SERIES[k % 4]};--k:${k}" pathLength="1"/>`
+      + `<text x="${W - 2}" y="${y.toFixed(1)}" text-anchor="end" class="mono lc-lab" fill="${sr.color || SERIES[k % 4]}">${esc(sr.label)}</text>`;
+  }).join('');
+  const marks = (c.marks || []).map(m => `<line x1="${X(toYear(m.x)).toFixed(1)}" x2="${X(toYear(m.x)).toFixed(1)}" y1="${T}" y2="${H - B}" class="lc-mark"/><text x="${(X(toYear(m.x)) + 4).toFixed(1)}" y="${T + 10}" class="mono lc-t">${esc(m.label)}</text>`).join('');
+  const unit = c.unit || c.series[0].unit || '';
+  const src = c.source ? (data.sources[c.source] ? `<a class="src mono" href="#src-${c.source}">${srcNo(c.source)}</a>` : esc(c.source)) : '';
+  return `<figure class="sc__chart sc__lc"><figcaption class="mono">${esc(c.title || c.series.map(sr => sr.label).join(', '))}${unit ? ' · ' + esc(unit) : ''}</figcaption>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.title || 'Chart')}">${grid.join('')}${yrs.join('')}${marks}${lines}</svg>
+    ${c.note || src ? `<figcaption class="mono">${esc(c.note || 'Source')} ${src}</figcaption>` : ''}</figure>`;
+}
+function chain(c) {
+  return `<div class="sc__block"><span class="sc__label mono">${esc(c.title || 'Chain of analysis')}</span><ol class="chain2">${c.steps.map((x, k) => `<li style="--k:${k}"><span class="mono">${k + 1}</span><span>${esc(x)}</span></li>`).join('')}</ol></div>`;
+}
 function chart(c) {
+  if (c.series && c.series[0] && !Array.isArray(c.series[0])) return lineChart(c);
   const W = 460, H = 190, max = Math.max(...c.series.map(d => d[1]));
   const bw = W / c.series.length;
   const bars = c.series.map(([x, v], k) => {
@@ -54,8 +98,9 @@ function sceneHTML(s, i) {
   const opener = part.first === i ? `<header class="part ch-wrap" data-part="${pi}">
       <span class="tag mono">Part ${pi + 1} of ${parts.length}</span>
       <h2 class="display part__title"><em>${pi === parts.length - 1 ? 'After' : 'Part ' + (pi + 1)}</em>${esc(s.part)}</h2>
-      <div class="part__fps mono">${[...new Set(part.scenes.flatMap(k => scenes[k].syllabus).filter(t => t.startsWith('FP')))].sort()
-        .map(t => `<span>${t} · ${esc(data.focusPoints.find(f => f.id === t).text)}</span>`).join('')}</div>
+      <div class="part__fps mono">${[...new Set(part.scenes.flatMap(k => scenes[k].syllabus || []))].sort()
+        .map(t => (data.focusPoints || data.syllabus || []).find(f => f.id === t)).filter(Boolean)
+        .filter(f => !data.focusPoints || f.id.startsWith('FP')).map(f => `<span>${f.id} · ${esc(f.text)}</span>`).join('')}</div>
     </header>` : '';
   const judge = s.judgement ? `<div class="sc__block"><span class="sc__label mono">Judgement</span><div class="sc__judge">
       <div class="for"><span class="mono">Arguments for</span><ul>${s.judgement.for.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
@@ -70,8 +115,9 @@ function sceneHTML(s, i) {
       <p class="sc__date">${esc(s.dateLabel)}</p>
       <h2 class="display sc__title">${title(s.title)}</h2>
       <div class="sc__body">${s.body}</div>
-      ${s.chart ? chart(s.chart) : ''}${s.compare ? compare(s.compare) : ''}${s.cascade ? cascade(s.cascade) : ''}
+      ${s.chart ? chart(s.chart) : ''}${s.chain ? chain(s.chain) : ''}${s.compare ? compare(s.compare) : ''}${s.cascade ? cascade(s.cascade) : ''}
       <div class="sc__block sc__why"><span class="sc__label mono">Why it matters</span><p>${esc(s.why)}</p></div>
+      ${s.evaluation && s.evaluation.length ? `<div class="sc__block"><span class="sc__label mono">It depends on</span><ul class="sc__eval">${s.evaluation.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
       ${mis}${judge}
       <div class="sc__block"><button class="sc__check" type="button" aria-expanded="false"><span class="mono"><span>Check yourself</span><span>Tap to reveal</span></span>
         <span class="q">${esc(s.check.q)}</span><span class="a">${esc(s.check.a)}</span></button></div>
@@ -135,6 +181,20 @@ function progressAt(y) {
   }
   return N - 1;
 }
+// engine scene space: a panel whose map spans several years holds one engine scene per year
+let eScenes = [], base = [], span = [];
+function engineP(y) {
+  const c = y + innerHeight * 0.5;
+  if (c < holds[0][0]) return progressAt(y);
+  for (let k = 0; k < N; k++) {
+    if (c <= holds[k][1]) {
+      const u = span[k] > 1 ? Math.max(0, Math.min(1, (c - holds[k][0]) / Math.max(1, holds[k][1] - holds[k][0]))) : 0;
+      return base[k] + u * (span[k] - 1);
+    }
+    if (k < N - 1 && c < holds[k + 1][0]) return base[k] + span[k] - 1 + (c - holds[k][1]) / (holds[k + 1][0] - holds[k][1]);
+  }
+  return eScenes.length - 1;
+}
 function goTo(i) {
   const y = holds[i][0] - innerHeight * 0.5 + 4;
   if (lenis) lenis.scrollTo(y, { duration: 1.6, easing: t => 1 - Math.pow(1 - t, 4) }); else scrollTo({ top: y, behavior: reduced ? 'auto' : 'smooth' });
@@ -142,33 +202,36 @@ function goTo(i) {
 
 // ── date ribbon ───────────────────────────────────────────────────────────
 const dayNum = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
-const T0 = dayNum('1945-01-01'), T1 = dayNum('1992-01-01');
+const T0 = dayNum(CFG.ribbon[0]), T1 = dayNum(CFG.ribbon[1]);
 const ribbon = $('[data-ribbon]'), track = $('[data-track]');
 track.innerHTML = scenes.map((s, i) => `<i class="ribbon__tick${parts.some(p => p.first === i) ? ' is-part' : ''}" style="left:${((dayNum(s.date) - T0) / (T1 - T0) * 100).toFixed(2)}%"></i>`).join('') + '<i class="ribbon__needle" data-needle></i>';
 const needle = $('[data-needle]'), yearEl = $('[data-year]'), labelEl = $('[data-label]');
+if ($('[data-ends]')) $('[data-ends]').innerHTML = `<span>${CFG.ribbon[0].slice(0, 4)}</span><span>${+CFG.ribbon[1].slice(0, 4) - 1}</span>`;
 const pillPart = $('[data-pill-part]'), pillDate = $('[data-pill-date]'), orb = $('[data-orb]');
 const ORB = 2 * Math.PI * 22;
 let lastShown = -2;
 function updateUI(p) {
   const i = Math.max(0, Math.floor(p)), f = p - Math.floor(p);
   const near = p < 0 ? 0 : Math.min(N - 1, Math.round(p));
-  const da = p < 0 ? dayNum('1948-01-01') : dayNum(scenes[i].date);
+  const da = p < 0 ? dayNum(CFG.heroDate) : dayNum(scenes[i].date);
   const db = p < 0 ? dayNum(scenes[0].date) : dayNum(scenes[Math.min(N - 1, i + 1)].date);
   const d = da + (db - da) * (p < 0 ? Math.max(0, p + 1) : f);
   needle.style.left = `${((d - T0) / (T1 - T0) * 100).toFixed(2)}%`;
-  yearEl.textContent = new Date(d * 864e5).getUTCFullYear();
+  const ep = eScenes.length ? engineP(lenis ? lenis.scroll : scrollY) : -1, es = eScenes[Math.max(0, Math.round(ep))];
+  const shown = ep >= -0.5 && es && es.map && (es.map.spikes || es.map.data);
+  yearEl.textContent = shown ? (shown.month ? shown.month.replace(/-(\d\d)$/, (m, mm) => ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+mm - 1]).split(' ').reverse().join(' ') : shown.year) : new Date(d * 864e5).getUTCFullYear();
   ribbon.classList.toggle('is-on', p > -0.6 && p < N - 0.6);
   const key = p < -0.5 ? -1 : near;
   if (key !== lastShown) {
     lastShown = key;
     const s = scenes[near];
     labelEl.textContent = s.dateLabel;
-    pillPart.textContent = p < -0.5 ? 'Key question 6' : `${s.part} · ${String(near + 1).padStart(2, '0')}/${N}`;
-    if (p < -0.5) pillDate.innerHTML = 'Eastern Europe, 1948–<span class="lc">c.</span>1989'; else pillDate.textContent = s.dateLabel;
+    pillPart.textContent = p < -0.5 ? CFG.pill.part : `${s.part} · ${String(near + 1).padStart(2, '0')}/${N}`;
+    if (p < -0.5) pillDate.innerHTML = CFG.pill.date; else pillDate.textContent = s.dateLabel;
     $$('[data-go]', menu).forEach(a => a.setAttribute('aria-current', +a.dataset.go === near));
     sections.forEach((sec, k) => sec.classList.toggle('is-active', key >= 0 && k === near));
     // paint the neighbouring scenes while the reader is reading, so no paint lands mid-flight
-    if (world) [near + 1, near - 1, near + 2].forEach((k, n) => idle(() => world.prepare(k), n * 120));
+    if (world) [base[near + 1], base[near] + span[near] - 1, base[near - 1], base[near + 2]].filter(k => k != null).forEach((k, n) => idle(() => world.prepare(k), n * 120));
   }
   orb.style.strokeDashoffset = (ORB * (1 - Math.max(0, (p + 1) / N))).toFixed(1);
 }
@@ -176,12 +239,12 @@ function updateUI(p) {
 // ── globe ─────────────────────────────────────────────────────────────────
 const idle = (f, delay = 0) => setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 1200 }) : f()), delay);
 let world = null;
-const hero = { camera: { lat: 47, lon: 24, alt: 15500 }, map: { ...scenes[0].map, markers: [], arrows: [], lines: [] } };
+let hero = null;
 const loader = $('[data-loader]'), pct = $('[data-pct]'), bar = $('[data-bar]');
 const setPct = v => { const n = Math.round(v * 100); pct.textContent = String(n).padStart(3, '0') + '%'; bar.style.width = n + '%'; };
 
 async function loadBorders() {
-  const res = await fetch('../assets/data/borders.json');
+  const res = await fetch(CFG.borders);
   if (!res.ok || !res.body) throw new Error('borders');
   const total = +res.headers.get('content-length') || 660000;
   const reader = res.body.getReader(); const chunks = []; let got = 0;
@@ -189,17 +252,57 @@ async function loadBorders() {
   return JSON.parse(new TextDecoder().decode(await new Blob(chunks).arrayBuffer()));
 }
 
+// one engine scene per year of a multi-year map; arrows and lines only on the last year, value labels on focus countries
+function buildEngineScenes(borders, values) {
+  const obj = borders.objects.countries;
+  const info = new Map(obj ? obj.geometries.map(g => [g.properties.key, g.properties]) : []);
+  eScenes = []; base = []; span = [];
+  const fmt = v => (Math.abs(v) >= 100 ? Math.round(v) : +v.toFixed(1)).toLocaleString('en-GB');
+  scenes.forEach((s, k) => {
+    const spec = s.map.spikes || s.map.data;
+    const steps = spec && Array.isArray(spec.years) && spec.years.length > 1 ? spec.years : [spec ? (spec.years ? spec.years[0] : spec.year ?? spec.month) : null];
+    base.push(eScenes.length); span.push(steps.length);
+    steps.forEach((y, n) => {
+      const when = y == null ? {} : (String(y).includes('-') ? { month: y, year: +String(y).slice(0, 4) } : { year: y });
+      const map = { ...s.map };
+      if (map.data) map.data = { ...map.data, year: when.year ?? map.data.year };
+      if (map.spikes) map.spikes = { ...map.spikes, ...when };
+      if (n < steps.length - 1) { map.arrows = []; map.flows = []; map.lines = []; }
+      if (values && spec && (map.focus || []).length && info.size) {
+        const ind = values[spec.id], unit = ind && ind.unit.startsWith('%') ? '%' : '';
+        const extra = map.focus.map(key => {
+          const p = info.get(key); if (!p) return null;
+          return { at: [p.lat, p.lon], label: p.name, key };
+        }).filter(Boolean);
+        map.markers = [...(map.markers || []), ...extra.map(m => ({ ...m, label: `${m.label}${(() => { const v = valueAt(values, { ...spec, ...when }, m.key); return v == null ? '' : ' · ' + fmt(v) + unit; })()}` }))];
+      }
+      eScenes.push({ ...s, map });
+    });
+  });
+  const h = data.hero && data.hero.camera ? data.hero : { camera: CFG.hero };
+  hero = { camera: h.camera, map: { ...eScenes[0].map, markers: [], arrows: [], flows: [], lines: [] } };
+}
+// same lookup as the engine's valueOf, kept here so labels can be built before the engine loads
+function valueAt(values, spec, key) {
+  const ind = values[spec.id]; if (!ind) return null; const row = ind.values[key]; if (!row) return null;
+  if (ind.months) {
+    const [y, m] = String(spec.month || `${spec.year}-12`).split('-').map(Number), [y0, m0] = ind.months[0].split('-').map(Number);
+    let i = (y - y0) * 12 + (m - m0); while (i >= 0 && row[i] == null) i--; return i >= 0 ? row[i] : null;
+  }
+  let i = spec.year - ind.years[0]; if (ind.latestOnly) { while (i >= 0 && row[i] == null) i--; return i >= 0 ? row[i] : null; }
+  return row[i] ?? null;
+}
+
 async function start() {
   setPct(0.02);
   try {
-    const [{ createWorld }, borders] = await Promise.all([import('./world.js'), loadBorders()]);
+    const [{ createWorld }, borders, values] = await Promise.all([import('./world.js'), loadBorders(), CFG.values ? fetch(CFG.values).then(r => r.json()).then(j => j.indicators) : null]);
+    buildEngineScenes(borders, values);
     setPct(0.96);
-    world = await createWorld($('[data-world]'), {
-      scenes, hero, data: borders, reduced,
-      relief: { world: '../assets/data/relief-world.jpg', europe: '../assets/data/relief-europe.jpg', europeBox: [-15, 30, 65, 75] },
-    });
+    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, values, accent: CFG.accent, reduced, relief: CFG.relief });
     if (!world) root.classList.add('no-webgl');
   } catch (err) {
+    if (!eScenes.length) { base = scenes.map((_, k) => k); span = scenes.map(() => 1); eScenes = scenes; }
     console.warn('Globe unavailable:', err);
     root.classList.add('no-webgl');
   }
@@ -207,9 +310,9 @@ async function start() {
   measure();
   let lastP = NaN;
   gsap.ticker.add(() => {
-    const p = progressAt(lenis ? lenis.scroll : scrollY);
+    const y = lenis ? lenis.scroll : scrollY, p = progressAt(y);
     if (p === lastP) return; lastP = p;
-    if (world) world.setProgress(p);
+    if (world) world.setProgress(engineP(y));
     updateUI(p);
   });
   addEventListener('resize', () => { measure(); lastP = NaN; });

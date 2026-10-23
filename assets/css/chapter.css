@@ -328,3 +328,39 @@
   .p2-sources { position: static; max-height: none; overflow: visible; padding-right: 0; }
   .paper { font-size: 17px; }
 }
+
+/* ── Economics: data legend, line charts, chains ─────────────────────────────────────── */
+.chapter[data-subject="economics"] { --acc: #46d6a0; --acc-deep: #138a64; --acc-ink: #04241a; }
+.world__legend { position: absolute; right: max(var(--gutter), 24px); top: calc(var(--nav-h) + 18px); z-index: 2; width: min(300px, 70vw); padding: 14px 16px 12px;
+  border-radius: 14px; background: rgb(6 7 12 / .72); border: 1px solid rgb(255 255 255 / .09); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  color: #fff; opacity: 0; transform: translateY(8px); transition: opacity .5s var(--ease), transform .5s var(--ease); pointer-events: none; }
+.world__legend.is-on { opacity: 1; transform: none; }
+.world__legend .mono { color: rgb(255 255 255 / .9); }
+.world__ramp { height: 8px; border-radius: 4px; margin: 10px 0 6px; }
+.world__ticks { display: flex; justify-content: space-between; color: rgb(255 255 255 / .62); font-size: 11px; }
+.world__unit { margin-top: 8px; color: rgb(255 255 255 / .62) !important; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+.world__nodata { display: inline-block; width: 14px; height: 10px; border-radius: 2px; background: repeating-linear-gradient(135deg, #272c37 0 3px, #3c424f 3px 4px); }
+.world__src { margin-top: 6px; font-size: 11.5px; line-height: 1.35; color: rgb(255 255 255 / .55); }
+@media (max-width: 900px) { .world__legend { left: var(--gutter); right: auto; top: calc(var(--nav-h) + 8px); bottom: auto; width: min(280px, 80vw); } }
+
+.sc__lc svg { width: 100%; height: auto; overflow: visible; }
+.lc-grid { stroke: rgb(255 255 255 / .08); stroke-width: 1; }
+.lc-grid.is-zero { stroke: rgb(255 255 255 / .32); }
+.lc-t { fill: rgb(255 255 255 / .55); font-size: 10px; }
+.lc-lab { font-size: 10.5px; }
+.lc-mark { stroke: rgb(255 255 255 / .35); stroke-dasharray: 3 4; }
+.lc-line { fill: none; stroke: var(--c); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.sc.is-active .lc-line, .no-motion .lc-line { stroke-dashoffset: 0; transition: stroke-dashoffset 1.6s var(--ease) calc(var(--k) * .25s); }
+
+.chain2 { display: grid; gap: 0; margin-top: 8px; }
+.chain2 li { position: relative; display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; padding: 9px 0; font-size: 15px; line-height: 1.45;
+  opacity: .35; transform: translateX(-6px); transition: opacity .5s var(--ease) calc(var(--k) * .18s), transform .5s var(--ease) calc(var(--k) * .18s); }
+.sc.is-active .chain2 li, .no-motion .chain2 li { opacity: 1; transform: none; }
+.chain2 li > .mono { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: var(--acc); border: 1px solid color-mix(in oklab, var(--acc) 55%, transparent); font-size: 11px; }
+.chain2 li:not(:last-child)::after { content: ""; position: absolute; left: 12px; top: 36px; bottom: -6px; width: 1px; background: color-mix(in oklab, var(--acc) 40%, transparent); }
+.sc__eval { display: grid; gap: 8px; margin-top: 8px; }
+.sc__eval li { position: relative; padding-left: 16px; font-size: 15px; line-height: 1.45; color: rgb(255 255 255 / .82); }
+.sc__eval li::before { content: ""; position: absolute; left: 0; top: .6em; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); }
+
+.world__spk { margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: rgb(255 255 255 / .8) !important; }
+.world__spk i { width: 3px; height: 14px; border-radius: 2px; background: linear-gradient(var(--acc), #fff); }

@@ -9,7 +9,7 @@ import {
   WebGLRenderer, Scene, PerspectiveCamera, Group, Mesh, SphereGeometry, ShaderMaterial, CanvasTexture, DataTexture,
   TextureLoader, Vector3, Vector4, Color, BufferGeometry, Float32BufferAttribute, LineSegments, LineBasicMaterial,
   TubeGeometry, CatmullRomCurve3, ConeGeometry, MeshBasicMaterial, BackSide, AdditiveBlending, SRGBColorSpace,
-  LinearFilter, Quaternion, Points,
+  LinearFilter, Quaternion, Points, InstancedMesh, CylinderGeometry, Matrix4, DynamicDrawUsage,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { geoEquirectangular, geoPath, geoInterpolate, geoDistance, geoArea } from 'd3-geo';
@@ -31,9 +31,49 @@ export const PALETTE = {
   land: '#2a303d', soviet: '#9b2c35', bloc: '#6e3a3c', west: '#2d4a6e', neutral: '#4b5160', focus: '#a084ee',
 };
 const SECTORS = { us: '#2c5687', uk: '#2d6b74', fr: '#4a4f93', su: PALETTE.bloc };
-const ARROW = { military: '#ff5a4f', people: '#ffd59a', pressure: '#c9b3ff' };
+const ARROW = { military: '#ff5a4f', people: '#ffd59a', pressure: '#c9b3ff', capital: '#7ef0c2', trade: '#9db7ff' };
 const LINE = { 'iron-curtain': '#dfe6f2', wall: '#ffffff' };
 const WALL_UP = '1961-08-13', WALL_DOWN = '1989-11-09';
+
+// ── data colour scales (Economics) ─────────────────────────────────────────
+// Sequential: deep blue to green to warm yellow. Diverging: orange below zero, grey at zero, blue above, so neither
+// side reads as "good" or "bad". Every indicator has a default domain; a scene can override it.
+const RAMP = {
+  sequential: ['#14243f', '#1d4f6e', '#1f8a7a', '#58c48b', '#e8d867', '#f59e4c'],
+  diverging: ['#d9662f', '#b5603d', '#5b4a48', '#3a3f4c', '#3e5878', '#3b78bf', '#62a8f0'],
+};
+const DOMAIN = {
+  NGDP_RPCH: [-8, 8, 'diverging'], PCPIPCH: [0, 15, 'sequential'], LUR: [0, 20, 'sequential'],
+  BCA_NGDPD: [-10, 10, 'diverging'], GGXCNL_NGDP: [-12, 12, 'diverging'], GGXWDG_NGDP: [0, 150, 'sequential'],
+  POLICY_RATE: [0, 20, 'sequential'], GINI: [25, 60, 'sequential'], CO2_PC: [0, 20, 'sequential'],
+};
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+export function scaleOf(spec) {
+  const [d0, d1, kind] = spec.domain ? [...spec.domain, spec.scale || 'sequential'] : (DOMAIN[spec.id] || [0, 100, 'sequential']);
+  const stops = RAMP[spec.scale || kind].map(hexRgb);
+  const color = v => {
+    const t = clamp((v - d0) / (d1 - d0)) * (stops.length - 1);
+    const k = Math.min(stops.length - 2, Math.floor(t)), u = t - k;
+    const c = stops[k].map((x, n) => Math.round(x + (stops[k + 1][n] - x) * u));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  };
+  return { color, d0, d1, kind: spec.scale || kind, stops: RAMP[spec.scale || kind] };
+}
+// value of an indicator for a country at a scene's year (or month for monthly series); latest earlier value if latestOnly
+export function valueOf(values, spec, key) {
+  const ind = values && values[spec.id]; if (!ind) return null;
+  const row = ind.values[key]; if (!row) return null;
+  if (ind.months) {
+    const [y, m] = String(spec.month || `${spec.year}-12`).split('-').map(Number);
+    const [y0, m0] = ind.months[0].split('-').map(Number);
+    let i = (y - y0) * 12 + (m - m0);
+    while (i >= 0 && row[i] == null) i--;
+    return i >= 0 ? row[i] : null;
+  }
+  let i = spec.year - ind.years[0];
+  if (ind.latestOnly) { while (i >= 0 && row[i] == null) i--; return i >= 0 ? row[i] : null; }
+  return row[i] ?? null;
+}
 
 // ── shaders ─────────────────────────────────────────────────────────────────
 const shellVert = /* glsl */`
@@ -102,7 +142,7 @@ const upright = f => {
   return f;
 };
 
-function paintTexture(canvas, feats, s, box = [-180, -90, 180, 90]) {
+function paintTexture(canvas, feats, s, box = [-180, -90, 180, 90], opts = {}) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const k = W / ((box[2] - box[0]) * DEG);
@@ -113,11 +153,32 @@ function paintTexture(canvas, feats, s, box = [-180, -90, 180, 90]) {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = PALETTE.land;
   ctx.beginPath(); path(feats.land); ctx.fill();
+  const spec = s.map.data;
+  if (spec && opts.values) {
+    // Economics: every country coloured by its value; countries without data get a fine hatch
+    const sc = scaleOf(spec);
+    if (!opts.hatch) {
+      const h = document.createElement('canvas'); h.width = h.height = 8; const x = h.getContext('2d');
+      x.fillStyle = '#272c37'; x.fillRect(0, 0, 8, 8); x.strokeStyle = 'rgba(255,255,255,0.12)'; x.lineWidth = 1;
+      x.beginPath(); x.moveTo(0, 8); x.lineTo(8, 0); x.stroke(); opts.hatch = ctx.createPattern(h, 'repeat');
+    }
+    for (const f of feats.countries) {
+      const v = valueOf(opts.values, spec, f.properties.key);
+      ctx.fillStyle = v == null ? opts.hatch : sc.color(v);
+      ctx.beginPath(); path(f); ctx.fill();
+    }
+  }
   for (const f of feats.countries) {
     const state = fill[f.properties.key];
     if (!state) continue;
     ctx.fillStyle = PALETTE[state] || PALETTE.land;
     ctx.beginPath(); path(f); ctx.fill();
+  }
+  const focus = s.map.focus || [];
+  if (focus.length) {
+    ctx.save(); ctx.strokeStyle = PALETTE.focus; ctx.globalAlpha = 0.85; ctx.lineWidth = Math.max(1, W / 2600); ctx.lineJoin = 'round';
+    for (const f of feats.countries) if (focus.includes(f.properties.key)) { ctx.beginPath(); path(f); ctx.stroke(); }
+    ctx.restore();
   }
   // Berlin at city scale: the four sectors of 1945, then West Berlin as one Western enclave, then the border strip
   const city = s.map.city === 'berlin' && feats.berlin;
@@ -138,8 +199,8 @@ function paintTexture(canvas, feats, s, box = [-180, -90, 180, 90]) {
   } else if (box[2] - box[0] < 360) {
     // a soft halo around the focus countries so the eye lands on them (detail texture only: blur is expensive)
     ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.filter = `blur(${Math.round(W / 700)}px)`;
-    ctx.globalAlpha = 0.3; ctx.fillStyle = PALETTE.focus;
-    for (const f of feats.countries) if (fill[f.properties.key] === 'focus') { ctx.beginPath(); path(f); ctx.fill(); }
+    ctx.globalAlpha = focus.length && !Object.values(fill).includes('focus') ? 0.14 : 0.3; ctx.fillStyle = PALETTE.focus;
+    for (const f of feats.countries) if (fill[f.properties.key] === 'focus' || focus.includes(f.properties.key)) { ctx.beginPath(); path(f); ctx.fill(); }
     ctx.restore();
   }
   // extra areas drawn last (an optional hand-drawn shape over everything)
@@ -215,7 +276,8 @@ function wallMesh(features, kind, radius, dash) {
 }
 
 // ── engine ──────────────────────────────────────────────────────────────────
-export async function createWorld(host, { scenes, hero, data, relief, reduced = false, onFrame } = {}) {
+export async function createWorld(host, { scenes, hero, data, relief, values = null, accent = null, reduced = false, onFrame } = {}) {
+  if (accent) PALETTE.focus = accent;
   const canvas = document.createElement('canvas');
   canvas.className = 'world__canvas';
   host.appendChild(canvas);
@@ -229,13 +291,18 @@ export async function createWorld(host, { scenes, hero, data, relief, reduced = 
   const camera = new PerspectiveCamera(32, 1, 0.0005, 100);
   const globe = new Group(); scene.add(globe);
 
-  const countries = feature(data, data.objects.cshapes).features.map(f => upright({ ...f, from: dayNum(f.properties.from), to: dayNum(f.properties.to) }));
+  const countryObj = data.objects.cshapes || data.objects.countries;
+  const countries = feature(data, countryObj).features.map(f => upright({ ...f, from: dayNum(f.properties.from), to: dayNum(f.properties.to) }));
+  // label point of each country (modern borders carry one; dated borders do not need it)
+  const point = new Map(countries.filter(f => f.properties.lat != null).map(f => [f.properties.key, f.properties]));
+  const at0 = date => { const d = dayNum(date === 'modern' || !date ? '2000-01-01' : date); return countries.filter(f => f.from <= d && d < f.to); };
+  const paintOpts = { values };
   const land = feature(data, data.objects.land);
   const berlin = data.objects.sectors ? {
     sectors: feature(data, data.objects.sectors).features.map(upright),
     wall: feature(data, data.objects.wall).features, strip: feature(data, data.objects.strip).features.map(upright),
   } : null;
-  const at = date => { const d = dayNum(date); return countries.filter(f => f.from <= d && d < f.to); };
+  const at = at0;
   const sceneOf = i => (i < 0 ? hero : scenes[i]);
 
   // textures: per scene, a world texture plus a sharp detail texture around the camera target
@@ -247,13 +314,13 @@ export async function createWorld(host, { scenes, hero, data, relief, reduced = 
     const s = sceneOf(i);
     const feats = { land, countries: at(s.map.borders), berlin };
     const g = document.createElement('canvas'); g.width = GW; g.height = GW / 2;
-    paintTexture(g, feats, { ...s, map: { ...s.map, city: null } });
+    paintTexture(g, feats, { ...s, map: { ...s.map, city: null } }, undefined, paintOpts);
     const { lat, lon, alt } = s.camera;
     const half = clamp(alt / 111 * 0.9 + (alt < 300 ? 0.15 : 1.5), 0.25, 32);
     const box = [lon - half * 2, Math.max(-89, lat - half), lon + half * 2, 0];
     box[3] = box[1] + (box[2] - box[0]) / 2; // 2:1, so one scale fits both axes
     const d = document.createElement('canvas'); d.width = DW; d.height = DW / 2;
-    paintTexture(d, feats, s, box);
+    paintTexture(d, feats, s, box, paintOpts);
     const t = { g: mkTex(g), d: mkTex(d), box: new Vector4(...box) };
     cache.set(i, t);
     if (cache.size > 4) { const k = [...cache.keys()].find(k => Math.abs(k - i) > 2); if (k !== undefined) { cache.get(k).g.dispose(); cache.get(k).d.dispose(); cache.delete(k); } }
@@ -305,7 +372,7 @@ export async function createWorld(host, { scenes, hero, data, relief, reduced = 
       const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
       for (const p of polys) for (const ring of p) lines.push(ring);
     }
-    const m = new LineSegments(lineGeometry(lines), new LineBasicMaterial({ color: '#c8cde0', transparent: true, opacity: 0, depthWrite: false }));
+    const m = new LineSegments(lineGeometry(lines), new LineBasicMaterial({ color: values ? '#0b0e15' : '#c8cde0', transparent: true, opacity: 0, depthWrite: false }));
     globe.add(m); borderSets.set(date, m); return m;
   };
 
@@ -316,6 +383,10 @@ export async function createWorld(host, { scenes, hero, data, relief, reduced = 
     if (overlays.has(i)) return overlays.get(i);
     const s = scenes[i]; const g = new Group(); const items = [];
     (s.map.arrows || []).forEach(a => { const m = arrowMesh(a.from, a.to, ARROW[a.kind] || '#fff', s.camera.alt); g.add(m); items.push({ type: 'arrow', m }); });
+    (s.map.flows || []).forEach(a => {
+      const p = point.get(a.from), q = point.get(a.to); if (!p || !q) return;
+      const m = arrowMesh([p.lat, p.lon], [q.lat, q.lon], ARROW[a.kind] || ARROW.capital, s.camera.alt); g.add(m); items.push({ type: 'arrow', m });
+    });
     (s.map.lines || []).forEach(l => {
       if (l.kind === 'wall' && berlin) {
         // the real route; after 9 November 1989 it is drawn broken, as the crossings open
@@ -329,6 +400,7 @@ export async function createWorld(host, { scenes, hero, data, relief, reduced = 
       }
       if (l.kind === 'iron-curtain') {
         // the real dated border between the West (West Germany, Austria) and the bloc (East Germany, Czechoslovakia, Hungary)
+        if (!data.objects.cshapes) return;
         const d = dayNum(s.map.borders), on = g => g.properties.from <= s.map.borders && s.map.borders < g.properties.to;
         const W = ['FRG', 'AUT'], E = ['GDR', 'CSK', 'HUN'];
         const m = mesh(data, data.objects.cshapes, (a, b) => a !== b && on(a) && on(b)
@@ -370,6 +442,60 @@ export async function createWorld(host, { scenes, hero, data, relief, reduced = 
       }
     });
   };
+
+  // spikes: columns rising from each country's label point, height = value (only where height means something)
+  const spikeKeys = [...point.keys()];
+  const spikes = new InstancedMesh(new CylinderGeometry(1, 1, 1, 10, 1, false).translate(0, 0.5, 0), new MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.92, depthWrite: true }), spikeKeys.length);
+  spikes.instanceMatrix.setUsage(DynamicDrawUsage); spikes.frustumCulled = false; spikes.visible = false;
+  globe.add(spikes);
+  const spikeCache = new Map();
+  const spikeHeights = i => {
+    if (spikeCache.has(i)) return spikeCache.get(i);
+    const s = sceneOf(i), sp = s.map.spikes;
+    const h = new Float32Array(spikeKeys.length);
+    if (sp && values) { const d1 = scaleOf(sp).d1; spikeKeys.forEach((k, n) => { const v = valueOf(values, sp, k); h[n] = v == null || v <= 0 ? 0 : Math.min(1.4, v / d1); }); }
+    const r = { h, on: !!sp, alt: s.camera.alt, spec: sp }; spikeCache.set(i, r); return r;
+  };
+  const sm = new Matrix4(), sq = new Quaternion(), sv = new Vector3(), ss = new Vector3(), Y = new Vector3(0, 1, 0);
+  const spikeColor = new Color(), WHITE = new Color('#ffffff');
+  function setSpikes(i, j, mix) {
+    const A = spikeHeights(i), B = spikeHeights(j);
+    const on = (A.on ? 1 - mix : 0) + (B.on ? mix : 0);
+    spikes.visible = on > 0.01; if (!spikes.visible) return;
+    const spec = (mix < 0.5 && A.on) || !B.on ? A.spec : B.spec, sc = scaleOf(spec);
+    const alt = Math.exp(Math.log(A.alt) * (1 - mix) + Math.log(B.alt) * mix);
+    const len = 0.3, rad = clamp(Math.sqrt(alt / 6000) * 0.0032, 0.0012, 0.006); // needles: height carries the value
+    spikeKeys.forEach((k, n) => {
+      const hA = A.on ? A.h[n] : 0, hB = B.on ? B.h[n] : 0;
+      const hh = (hA + (hB - hA) * mix) * on;
+      const p = point.get(k); const dir = ll(p.lat, p.lon).normalize();
+      sq.setFromUnitVectors(Y, dir); sv.copy(dir).multiplyScalar(1.0006);
+      ss.set(rad, Math.max(1e-6, hh * len), rad);
+      sm.compose(sv, sq, ss); spikes.setMatrixAt(n, sm);
+      spikeColor.set(PALETTE.focus).lerp(WHITE, clamp(hh / Math.max(on, 1e-3) / 1.2) * 0.7); spikes.setColorAt(n, spikeColor);
+    });
+    spikes.instanceMatrix.needsUpdate = true; if (spikes.instanceColor) spikes.instanceColor.needsUpdate = true;
+  }
+
+  // legend for data scenes: indicator, year, colour ramp, source
+  const legend = document.createElement('div'); legend.className = 'world__legend'; host.appendChild(legend);
+  let legendKey = '';
+  function setLegend(s) {
+    const spec = s && (s.map.data || s.map.spikes), sp = s && s.map.data && s.map.spikes;
+    const key = spec ? `${spec.id}|${spec.year}|${sp ? sp.id + sp.month : ''}` : '';
+    if (key === legendKey) return; legendKey = key;
+    legend.classList.toggle('is-on', !!spec); if (!spec || !values || !values[spec.id]) return;
+    const ind = values[spec.id], sc = scaleOf(spec), when = s.map.data ? spec.year : (spec.month || spec.year);
+    const mon = m => m ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m.slice(5) - 1] + ' ' + m.slice(0, 4) : '';
+    const fmt = v => (Math.abs(v) >= 100 ? Math.round(v) : +v.toFixed(1)).toLocaleString('en-GB');
+    const fc = ind.forecastFrom && +String(when).slice(0, 4) >= ind.forecastFrom ? ' · IMF projection' : '';
+    legend.innerHTML = `<p class="mono">${ind.label} · ${when}${fc}</p>
+      <div class="world__ramp" style="background:linear-gradient(90deg,${sc.stops.join(',')})"></div>
+      <div class="world__ticks mono"><span>${sc.d0 < 0 ? '' : '≤ '}${fmt(sc.d0)}</span>${sc.kind === 'diverging' ? '<span>0</span>' : ''}<span>≥ ${fmt(sc.d1)}</span></div>
+      <p class="mono world__unit">${ind.unit}${s.map.data ? ' · <i class="world__nodata"></i> no data' : ''}</p>
+      ${sp && values[sp.id] ? `<p class="mono world__spk"><i></i>Height · ${values[sp.id].label} · ${mon(sp.month) || sp.year}</p>` : ''}
+      <p class="world__src">${ind.source}${sp && values[sp.id] ? '. ' + values[sp.id].source : ''}</p>`;
+  }
 
   // markers: DOM labels pinned to the globe
   const labels = document.createElement('div'); labels.className = 'world__labels'; host.appendChild(labels);
@@ -455,6 +581,8 @@ export async function createWorld(host, { scenes, hero, data, relief, reduced = 
     const cityA = sceneOf(i).map.city ? 0.4 : 1, cityB = sceneOf(j).map.city ? 0.4 : 1;
     ba.material.opacity += 0.28 * (1 - mix) * cityA; bb.material.opacity += 0.28 * mix * cityB;
 
+    setSpikes(i, j, mix);
+    setLegend(sceneOf(mix < 0.5 ? i : j));
     for (const [idx, o] of overlays) if (idx !== i && idx !== j) o.g.visible = false;
     if (i >= 0) setOverlay(i, 1, 1 - smooth(0.05, 0.4, f), time);
     if (j !== i) setOverlay(j, smooth(0.55, 1, f), smooth(0.5, 0.8, f), time);
@@ -477,6 +605,7 @@ export async function createWorld(host, { scenes, hero, data, relief, reduced = 
 
   return {
     setProgress(p) { progress = p; },
+    pointOf: key => point.get(key),
     prepare(i) { if (i >= -1 && i < scenes.length) texFor(i); },
     destroy() { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); renderer.dispose(); },
   };
