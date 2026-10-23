@@ -51,6 +51,18 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   (both Datenlizenz Deutschland Zero 2.0). It keeps only state versions valid on a scene date of some
   `assets/js/data/history/kq*.js`, so rerun it after adding a chapter. Relief: Natural Earth SR_50M via `sips`.
 
+## Economics scroll chapter (work in progress)
+- `economics/macro-policy.html` (Topic 4.1–4.4) reuses `chapter.js`: `<body data-chapter>` names the data file, and
+  anything the file leaves out falls back to KQ6's values. It currently loads `assets/js/data/economics/engine-test.js`,
+  an engine test with placeholder text. Not linked from the site yet.
+- Scene maps can colour every country by an indicator (`map.data`), raise spikes (`map.spikes`), step through several
+  years in one panel (`years: [...]`), and show line charts (`chart.series` of points) and chains (`chain.steps`).
+  Colour scales and default domains: `RAMP` and `DOMAIN` in `src/world/engine.js`.
+- `tools/build-econ.mjs` → `assets/data/countries-modern.json` (Natural Earth 50m, ISO3 keys) and
+  `assets/data/econ.json` (IMF WEO October 2026, BIS policy rates, OWID Gini and CO2). Inputs cached in `tools/.cache/`.
+- `assets/js/data/economics/policy-lab.js`: the policy-lab model (draft, not teacher-reviewed). Its reader,
+  `assets/js/policy-lab.js`, does not exist yet.
+
 ## Measured facts
 - History chapter (2026-10-23): borders.json 414 KB (315 state versions, Europe detailed, rest coarse, Berlin layers);
   relief 174 + 366 KB; world.js 582 KB. Painting one scene's textures takes 55–120 ms on the dev Mac (Berlin about
