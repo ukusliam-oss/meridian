@@ -23,7 +23,7 @@ const src = ch.sources || {};
 const hasSrc = k => Object.prototype.hasOwnProperty.call(src, k);
 
 // indicators and dates
-function checkSpec(where, spec, kind) {
+function checkSpec(where, spec, kind, scene = {}) {
   const ind = indicators[spec.id];
   if (!ind) return err(where, `${kind} indicator ${spec.id} is not in econ.json`);
   const whens = spec.years || (spec.year != null ? [spec.year] : spec.month ? [spec.month] : []);
@@ -35,7 +35,7 @@ function checkSpec(where, spec, kind) {
       else if (String(w) < ind.months[0] || String(w) > ind.months[1]) err(where, `${kind} ${spec.id} has no month ${w}`);
     } else if (ind.years && (+w < ind.years[0] || +w > ind.years[1])) err(where, `${kind} ${spec.id} has no year ${w}`);
     else if (ind.months && (String(w) < ind.months[0].slice(0, 4) || String(w) > ind.months[1].slice(0, 4))) err(where, `${kind} ${spec.id} has no months in ${w}`);
-    else if (ind.forecastFrom && +String(w).slice(0, 4) >= ind.forecastFrom) warn(where, `${kind} ${spec.id} ${w} is an IMF projection: say so in the text`);
+    else if (ind.forecastFrom && +String(w).slice(0, 4) >= ind.forecastFrom && !/projection/i.test(scene.body || '')) warn(where, `${kind} ${spec.id} ${w} is an IMF projection: say so in the text`);
     // a map of a year where most countries have no figure says little
     if (!String(w).includes('-') && ind.years && !ind.latestOnly) {
       const k = +w - ind.years[0], n = Object.values(ind.values).filter(r => r[k] != null).length;
@@ -58,8 +58,8 @@ const covered = new Set();
   for (const k of s.sources || []) if (!hasSrc(k)) err(at, `scene source "${k}" is not in sources`);
   if (!(s.syllabus || []).length) err(at, 'no syllabus points'); else s.syllabus.forEach(t => covered.add(t));
   const m = s.map || {};
-  if (m.data) checkSpec(at, m.data, 'map.data');
-  if (m.spikes) checkSpec(at, m.spikes, 'map.spikes');
+  if (m.data) checkSpec(at, m.data, 'map.data', s);
+  if (m.spikes) checkSpec(at, m.spikes, 'map.spikes', s);
   for (const k of m.focus || []) if (!iso.has(k)) err(at, `focus ${k} is not a country in countries-modern.json`);
   for (const fl of m.flows || []) for (const k of [fl.from, fl.to]) if (!iso.has(k)) err(at, `flow end ${k} is not a country`);
   if (m.focus && m.focus.length > 6) warn(at, `${m.focus.length} focus countries crowd the map labels`);
@@ -96,7 +96,7 @@ if (!(tk.summary || []).length) err('toolkit', 'no summary');
 if (ch.id !== 'engine-test') {
   if ((tk.checks || []).length < 20) err('toolkit', `${(tk.checks || []).length} quick checks, plan asks for 20`);
   if (!(tk.definitions || []).length) warn('toolkit', 'no definition bank');
-  if ((tk.practice?.sets || tk.practice || []).length < 4) warn('toolkit', 'fewer than 4 Section B practice sets');
+  if ((tk.practiceSets || []).length < 4) warn('toolkit', 'fewer than 4 Section B practice sets');
 }
 
 // sources used at least once

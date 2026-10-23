@@ -157,6 +157,17 @@ if (data.subject && data.status === 'draft' && $('.ch-hero .ch-wrap')) $('.ch-he
 // end of chapter: one-page summary, quick checks, every source
 $('[data-sum]').innerHTML = data.toolkit.summary.map(x => `<p>${x}</p>`).join('');
 $('[data-checks]').innerHTML = data.toolkit.checks.map(c => `<button class="sc__check" type="button" aria-expanded="false"><span class="mono"><span>Quick check</span><span>Tap</span></span><span class="q">${esc(c.q)}</span><span class="a">${esc(c.a)}</span></button>`).join('');
+// definition bank and Section B practice, for chapters that have them
+const defs = $('[data-defs]');
+if (defs) { if (data.toolkit.definitions) defs.innerHTML = data.toolkit.definitions.map(d => `<dt>${esc(d.k)}</dt><dd>${esc(d.d)}</dd>`).join(''); else defs.closest('.ch-card').remove(); }
+const prEl = $('[data-practice]');
+if (prEl) {
+  if (data.toolkit.practiceSets) {
+    // the mark-scheme rules and their source note are shared with the subject page's practice sets
+    Promise.all([import('./practice.js'), import('./data/practice-economics.js')]).then(([{ practice }, { default: base }]) =>
+      practice(prEl, { ...base, id: data.id, sets: data.toolkit.practiceSets }));
+  } else prEl.closest('.ch-card').remove();
+}
 $('[data-sources]').innerHTML = srcKeys.map((k, n) => {
   const s = data.sources[k];
   return `<li id="src-${k}"><span class="mono">${n + 1}</span> <b>${esc(s.title)}</b>. ${esc(s.author)}. ${esc(s.publisher)}${s.year && s.year !== 'n.d.' ? ', ' + s.year : ''}. <a href="${esc(s.url)}" rel="noopener">${esc(s.url.replace(/^https?:\/\//, ''))}</a></li>`;

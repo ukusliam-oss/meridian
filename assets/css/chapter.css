@@ -388,3 +388,16 @@
 .world__marker b { padding: 5px 7px; margin-left: -6px; border-radius: 0 7px 7px 0; background: color-mix(in oklab, var(--acc, #a084ee) 32%, rgb(6 7 12 / .8)); color: #fff; font-size: 11px; font-weight: 500; }
 .world__marker.is-left b { margin-left: 0; margin-right: -6px; border-radius: 7px 0 0 7px; }
 .ch-draft { margin-top: 18px; display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid rgb(255 255 255 / .18); color: rgb(255 255 255 / .75); font-size: 11px; }
+
+/* definition bank, comparison table in a panel, policy lab section */
+.ch-defs { display: grid; grid-template-columns: minmax(150px, max-content) 1fr; gap: 10px 22px; font-size: 15px; line-height: 1.5; }
+.ch-defs dt { color: #fff; font-weight: 600; }
+.ch-defs dd { margin: 0; color: rgb(238 237 246 / .8); }
+@media (max-width: 640px) { .ch-defs { grid-template-columns: 1fr; gap: 2px; } .ch-defs dd { margin-bottom: 10px; } }
+.sc__table { width: 100%; margin: 14px 0; border-collapse: collapse; font-size: 13.5px; line-height: 1.4; }
+.sc__table th, .sc__table td { padding: 8px 8px 8px 0; border-bottom: 1px solid rgb(255 255 255 / .08); text-align: left; vertical-align: top; }
+.sc__table thead th { font: 500 11px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .03em; color: var(--acc); }
+.sc__table tbody th { font: 500 11px/1.3 var(--mono); text-transform: uppercase; color: rgb(255 255 255 / .6); width: 22%; }
+.sc__body .sc__table + p { margin-top: 10px; }
+.ch-lab { position: relative; z-index: 2; padding: 12vh 0 6vh; background: linear-gradient(transparent, #05060a 18%); }
+.ch-practice .pr { margin-top: 6px; }
