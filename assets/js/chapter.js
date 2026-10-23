@@ -4,6 +4,7 @@
 // The page names its data file in <body data-chapter>; anything a chapter does not set falls back to KQ6's values.
 
 import { $, $$, gsap, lenis, reduced, boot, esc } from './core.js';
+import { MT, strokeBorder, aurora, animIcon, drawIn, nudge } from './glass.js';
 const { default: data } = await import(document.body.dataset.chapter || './data/history/kq6.js');
 const usesValues = data.scenes.some(s => (s.map && (s.map.data || s.map.spikes)) || (s.chart && (s.chart.series || []).some(sr => sr.ind)));
 const CFG = {
@@ -191,34 +192,58 @@ const CHEV = '<svg class="chmenu__chev" viewBox="0 0 24 24" fill="none" stroke="
 menu.setAttribute('role', 'menu'); menu.tabIndex = -1;
 menu.innerHTML = '<div class="chmenu__surface" aria-hidden="true"></div><div class="chmenu__items">' + parts.map((p, k) => `${k ? '<div class="chmenu__sep" role="separator"></div>' : ''}<div class="chmenu__label">Part ${k + 1} · ${esc(p.name)}</div>`
   + p.scenes.map(i => `<a class="chmenu__item" role="menuitem" tabindex="-1" href="#${scenes[i].id}" data-go="${i}"><span class="chmenu__content"><span class="chmenu__num">${String(i + 1).padStart(2, '0')}</span><span class="chmenu__text">${esc(scenes[i].title)}</span></span>${CHEV}</a>`).join('')).join('') + '</div>';
-const menuBtn = $('[data-menu-btn]'), menuItems = $('.chmenu__items', menu);
-// Like emotion-agency's settings dropdown, the panel opens over its own trigger (which fades out beneath it), and on
-// close it shrinks back into the trigger's box: --mx/--my move its corner there, --msx/--msy scale it to the trigger's size.
+const menuBtn = $('[data-menu-btn]'), menuItems = $('.chmenu__items', menu), pill = $('.pillnav');
+// the pill is emotion-agency's glass button: pointer-lit rim, aurora inside, glow below on hover
+pill.insertAdjacentHTML('afterbegin', '<div class="pillnav__aurora" aria-hidden="true"><canvas></canvas></div><div class="pillnav__shadow" aria-hidden="true"></div>');
+aurora($('.pillnav__aurora canvas', pill)); strokeBorder(pill);
+strokeBorder(menu); menu.classList.remove('stroke-border'); // the menu's surface draws its own rim; it only takes the light angle
+// their icons: the menu lines draw in, row chevrons nudge, when the pointer arrives
+$('svg', menuBtn).innerHTML = '<path d="M4 9h16"/><path d="M4 15h16"/>';
+$('svg', menuBtn).setAttribute('stroke-width', '2');
+animIcon($('svg', menuBtn), drawIn($$('path', menuBtn)));
+$$('.chmenu__item', menu).forEach(a => animIcon($('svg', a), nudge($('svg path', a))));
+
+// Opening follows their SettingsDropdown: the pointer reaching the trigger opens it at once; once the pointer is more
+// than 8px outside both the trigger and the panel it closes after 150ms, and coming back cancels that. The panel
+// grows out of the trigger's own box (0.52s, back.out(1.3)) and, on close, shrinks back into it. After a close the
+// trigger ignores the pointer for 320ms so it does not reopen under it. Touch screens tap; keyboards use Enter.
+const touchOnly = matchMedia('(hover: none)').matches;
+const boxOf = (el, e) => { const r = el.getBoundingClientRect(), PAD = 8; return e.clientX >= r.left - PAD && e.clientX <= r.right + PAD && e.clientY >= r.top - PAD && e.clientY <= r.bottom + PAD; };
+let hideTimer = 0, inside = false, grow = null, releaseTimer = 0;
+const cancelHide = () => { clearTimeout(hideTimer); hideTimer = 0; };
+const hideSoon = () => { cancelHide(); hideTimer = setTimeout(() => setMenu(false), 150); };
 function placeMenu() {
   const b = menuBtn.getBoundingClientRect(), pad = 16;
-  menu.style.setProperty("--chm-max", `${Math.min(352, Math.max(160, b.bottom - 6 - pad - 16))}px`); // compact like theirs, never past the top
+  menu.style.setProperty("--chm-max", `${Math.min(352, Math.max(160, b.bottom - pad - 16))}px`); // compact like theirs, never past the top
   const m = menu.getBoundingClientRect();
-  const left = Math.min(Math.max(pad, b.left - 6), innerWidth - pad - m.width), top = Math.max(pad, b.bottom + 6 - m.height);
-  menu.style.transform = ''; menu.style.left = `${left}px`; menu.style.top = `${top}px`;
+  // over its own trigger, as theirs: the panel's bottom edge sits on the trigger's bottom edge
+  const left = Math.min(Math.max(pad, b.left - 6), innerWidth - pad - m.width), top = Math.max(pad, b.bottom - m.height);
+  menu.style.left = `${left}px`; menu.style.top = `${top}px`;
   return { left, top, width: m.width, height: m.height, b };
 }
 let menuOpen = false;
 function setMenu(open) {
   if (open === menuOpen) return;
-  menuOpen = open;
+  menuOpen = open; cancelHide();
   menuBtn.setAttribute('aria-expanded', open);
+  pill.classList.toggle('is-open', open);
   if (open) {
-    menu.hidden = false; delete menu.dataset.state;
-    const { width: W, height: H } = placeMenu();
+    menu.hidden = false; delete menu.dataset.state; grow?.kill(); gsap.set(menu, { clearProps: 'transform' });
+    const { width: W, height: H, left, top, b } = placeMenu();
     // their blob deforms a 186 x 159 px panel by percentages; the same pixels on this panel keep the motion as subtle
     const kx = 186 / W, ky = 159 / H, set = (k, v) => menu.style.setProperty(k, v.toFixed(4));
     set('--b0x', 1 - 0.18 * kx); set('--b0y', 1 + 0.18 * ky); set('--b1x', 1 + 0.06 * kx); set('--b1y', 1 - 0.06 * ky);
     set('--b2x', 1 - 0.02 * kx); set('--b2y', 1 + 0.02 * ky);
     menu.dataset.state = 'open';
+    if (!reduced) {
+      gsap.set(menu, { transformOrigin: '0 0', x: b.left - left, y: b.top - top, scaleX: b.width / W, scaleY: b.height / H });
+      grow = gsap.to(menu, { x: 0, y: 0, scaleX: 1, scaleY: 1, duration: 0.52, ease: 'back.out(1.3)', onComplete: () => gsap.set(menu, { clearProps: 'transform' }) });
+    }
     const cur = $('[aria-current="true"]', menu);
     if (cur) menuItems.scrollTop = cur.offsetTop - menuItems.clientHeight / 2 + cur.offsetHeight / 2;
-    (cur || $('.chmenu__item', menu)).focus({ preventScroll: true });
+    if (!touchOnly || document.activeElement === menuBtn) (cur || $('.chmenu__item', menu)).focus({ preventScroll: true });
   } else {
+    grow?.kill(); gsap.set(menu, { clearProps: 'transform' });
     if (reduced) { menu.hidden = true; delete menu.dataset.state; return; }
     const r = menu.getBoundingClientRect(), b = menuBtn.getBoundingClientRect();
     menu.style.setProperty('--mx', `${b.left - r.left}px`);
@@ -226,6 +251,7 @@ function setMenu(open) {
     menu.style.setProperty('--msx', b.width / r.width);
     menu.style.setProperty('--msy', b.height / r.height);
     menu.dataset.state = 'closed';
+    if (!touchOnly) { menuBtn.style.pointerEvents = 'none'; clearTimeout(releaseTimer); releaseTimer = setTimeout(() => { menuBtn.style.pointerEvents = ''; }, 320); }
     // animationend can be skipped in a background tab, so a timer finishes the close too
     let timer = 0;
     const done = e => {
@@ -237,7 +263,15 @@ function setMenu(open) {
     timer = setTimeout(done, 450);
   }
 }
-menuBtn.addEventListener('click', () => setMenu(!menuOpen));
+if (!touchOnly) {
+  menuBtn.addEventListener('pointerenter', () => { inside = true; setMenu(true); });
+  addEventListener('pointermove', e => {
+    if (!menuOpen) return;
+    const now = !!e.target.closest?.('.chmenu, [data-menu-btn]') || boxOf(menuBtn, e) || boxOf(menu, e);
+    if (now !== inside) { inside = now; now ? cancelHide() : hideSoon(); }
+  }, { passive: true });
+}
+menuBtn.addEventListener('click', () => { if (touchOnly || !menuOpen) setMenu(!menuOpen); });
 document.addEventListener('pointerdown', e => { if (menuOpen && !menu.contains(e.target) && !menuBtn.contains(e.target)) setMenu(false); });
 addEventListener('resize', () => { if (menuOpen) placeMenu(); });
 document.addEventListener('keydown', e => {
@@ -305,6 +339,16 @@ track.innerHTML = scenes.map((s, i) => `<i class="ribbon__tick${parts.some(p => 
 const needle = $('[data-needle]'), yearEl = $('[data-year]'), labelEl = $('[data-label]');
 if ($('[data-ends]')) $('[data-ends]').innerHTML = `<span>${CFG.ribbon[0].slice(0, 4)}</span><span>${+CFG.ribbon[1].slice(0, 4) - 1}</span>`;
 const pillPart = $('[data-pill-part]'), pillDate = $('[data-pill-date]'), orb = $('[data-orb]');
+// pill labels roll like their button text: the old line slides up and out as the new one comes up from below
+for (const el of [pillPart, pillDate]) { el.classList.add('pillnav__roll'); el.innerHTML = `<span>${el.innerHTML}</span>`; }
+function roll(el, html) {
+  const old = el.lastElementChild; if (old && old.innerHTML === html) return;
+  if (reduced || !old) { el.innerHTML = `<span>${html}</span>`; return; }
+  [...el.children].slice(0, -1).forEach(n => n.remove());
+  const nu = document.createElement('span'); nu.innerHTML = html; el.appendChild(nu);
+  gsap.fromTo(old, { yPercent: 0 }, { yPercent: -120, duration: 0.5, ease: 'expo.out', onComplete: () => old.remove() });
+  gsap.fromTo(nu, { yPercent: 110 }, { yPercent: 0, duration: 0.5, ease: 'expo.out' });
+}
 const ORB = 2 * Math.PI * 22;
 let lastShown = -2;
 function updateUI(p) {
@@ -323,8 +367,8 @@ function updateUI(p) {
     lastShown = key;
     const s = scenes[near];
     labelEl.textContent = s.dateLabel;
-    pillPart.textContent = p < -0.5 ? CFG.pill.part : `${s.part} · ${String(near + 1).padStart(2, '0')}/${N}`;
-    if (p < -0.5) pillDate.innerHTML = CFG.pill.date; else pillDate.textContent = s.dateLabel;
+    roll(pillPart, esc(p < -0.5 ? CFG.pill.part : `${s.part} · ${String(near + 1).padStart(2, '0')}/${N}`));
+    roll(pillDate, p < -0.5 ? CFG.pill.date : esc(s.dateLabel));
     $$('[data-go]', menu).forEach(a => a.setAttribute('aria-current', +a.dataset.go === near));
     sections.forEach((sec, k) => sec.classList.toggle('is-active', key >= 0 && k === near));
     // paint the neighbouring scenes while the reader is reading, so no paint lands mid-flight
