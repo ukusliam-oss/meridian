@@ -190,6 +190,8 @@ document.addEventListener('click', e => {
 const menu = $('[data-menu]');
 const CHEV = '<svg class="chmenu__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18l6-6l-6-6"/></svg>';
 menu.setAttribute('role', 'menu'); menu.tabIndex = -1;
+// the wheel scrolls the list, not the page behind it (Lenis skips elements marked data-lenis-prevent, as on their menu)
+menu.setAttribute('data-lenis-prevent', '');
 menu.innerHTML = '<div class="chmenu__surface" aria-hidden="true"></div><div class="chmenu__items">' + parts.map((p, k) => `${k ? '<div class="chmenu__sep" role="separator"></div>' : ''}<div class="chmenu__label">Part ${k + 1} · ${esc(p.name)}</div>`
   + p.scenes.map(i => `<a class="chmenu__item" role="menuitem" tabindex="-1" href="#${scenes[i].id}" data-go="${i}"><span class="chmenu__content"><span class="chmenu__num">${String(i + 1).padStart(2, '0')}</span><span class="chmenu__text">${esc(scenes[i].title)}</span></span>${CHEV}</a>`).join('')).join('') + '</div>';
 const menuBtn = $('[data-menu-btn]'), menuItems = $('.chmenu__items', menu), pill = $('.pillnav');
