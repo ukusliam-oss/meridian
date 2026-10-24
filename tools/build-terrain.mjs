@@ -140,7 +140,7 @@ for (const L of LEVELS) {
     // all-sea tiles are flat: leave them out, the engine falls back to the coarser relief there
     let flat = true; for (let i = 0; i < px.length; i += 4 * 97) if (Math.abs(px[i] - 191) > 2) { flat = false; break; }
     if (flat) continue;
-    const jpg = jpeg.encode({ data: px, width: T, height: T }, 78).data;
+    const jpg = jpeg.encode({ data: px, width: T, height: T }, 62).data; // soft shading: quality 62 is ~35% smaller than 78 and looks the same
     writeFileSync(`assets/data/terrain/${L.z}/${x}_${y}.jpg`, jpg); kept.push(`${x}_${y}`); bytes += jpg.length;
   }
   index.levels.push({ z: L.z, ppd: L.ppd, deg: L.deg, tiles: kept.sort() });

@@ -18,6 +18,7 @@
 //   sectors  Berlin's four sectors of 1945, { sector: us | uk | fr | su }, built from today's Ortsteile
 //   wall     the Wall in 1989, { kind: front | rear }
 //   strip    the border strip ("death strip") in 1989
+//   staaken  West Staaken: in the British sector, but run by the GDR from 1 February 1951 (Staaken west of the Wall)
 // The derived map data is shared under CC BY-NC-SA 4.0 (see assets/data/BORDERS-LICENSE.txt).
 
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
@@ -27,6 +28,7 @@ import { presimplify, simplify, quantile } from 'topojson-simplify';
 import { feature, merge } from 'topojson-client';
 import { geoCentroid, geoArea } from 'd3-geo';
 import shapefile from 'shapefile';
+import pc from 'polygon-clipping';
 
 const read = p => JSON.parse(readFileSync(p, 'utf8'));
 // d3 draws spherical polygons with clockwise outer rings; GeoJSON (RFC 7946) sources use the opposite order
@@ -93,8 +95,8 @@ const land = feature(st, st.objects.land);
 const water = { rivers: feature(st, st.objects.rivers).features, lakes: feature(st, st.objects.lakes).features, deep: feature(st, st.objects.deep).features };
 
 // ── Berlin ──────────────────────────────────────────────────────────────
-// 1945 sectors, by the pre-2001 borough each Ortsteil belonged to. (West Staaken, handed to the Soviet zone in 1945 and
-// run by the GDR from 1951, is left inside the British sector: it is too small to show at this scale.)
+// 1945 sectors, by the pre-2001 borough each Ortsteil belonged to. West Staaken, handed to the Soviets in the 1945
+// exchange but run by Spandau until the GDR's police took it over on 1 February 1951, is kept as its own layer below.
 const SECTOR = {
   us: ['Kreuzberg', 'Neukölln', 'Britz', 'Buckow', 'Rudow', 'Gropiusstadt', 'Tempelhof', 'Mariendorf', 'Marienfelde', 'Lichtenrade',
     'Schöneberg', 'Friedenau', 'Steglitz', 'Lichterfelde', 'Lankwitz', 'Zehlendorf', 'Dahlem', 'Nikolassee', 'Wannsee', 'Schlachtensee'],
@@ -115,18 +117,41 @@ const wall = [
   ...read('tools/.cache/berlin/a_grenzmauer.json').features.map(f => ({ type: 'Feature', geometry: f.geometry, properties: { kind: 'front' } })),
   ...read('tools/.cache/berlin/b_hinterlandmauer.json').features.map(f => ({ type: 'Feature', geometry: f.geometry, properties: { kind: 'rear' } })),
 ];
+// West Staaken: the Staaken Ortsteil west of the 1989 front wall. The wall's pieces through Staaken are chained from the
+// northernmost end southwards (at each joint the piece reaching furthest south, which skips a short spur), then the
+// line is closed far to the west and cut with the Ortsteil
+const westStaaken = (() => {
+  const box = [13.10, 52.47, 13.19, 52.59];
+  const lines = wall.filter(f => f.properties.kind === 'front').flatMap(f => f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates)
+    .filter(l => l.some(([x, y]) => x > box[0] && x < box[2] && y > box[1] && y < box[3]));
+  const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const top = l => Math.max(l[0][1], l.at(-1)[1]);
+  const start = lines.reduce((bi, l, i) => (top(l) > top(lines[bi]) ? i : bi), 0), used = new Set([start]);
+  let chain = lines[start][0][1] >= lines[start].at(-1)[1] ? lines[start] : lines[start].slice().reverse();
+  for (;;) {
+    const end = chain.at(-1);
+    const next = lines.map((l, i) => ({ l: d(l[0], end) < d(l.at(-1), end) ? l : l.slice().reverse(), i }))
+      .filter(({ l, i }) => !used.has(i) && d(l[0], end) < 0.001).sort((a, b) => a.l.at(-1)[1] - b.l.at(-1)[1])[0];
+    if (!next) break;
+    used.add(next.i); chain = chain.concat(next.l.slice(1));
+  }
+  const west = [[...chain, [12.9, chain.at(-1)[1]], [12.9, chain[0][1]], chain[0]]];
+  const st = ot.features.find(f => f.properties.nam === 'Staaken').geometry;
+  const cut = pc.intersection(st.type === 'Polygon' ? [st.coordinates] : st.coordinates, west);
+  return { type: 'Feature', properties: {}, geometry: rewind({ type: 'MultiPolygon', coordinates: cut }) };
+})();
 const strip = read('tools/.cache/berlin/d_grenzstreifen.json').features.map(f => ({ type: 'Feature', geometry: rewind(f.geometry), properties: {} }));
 const berlinTopo = (() => {
-  let t = topology({ sectors: { type: 'FeatureCollection', features: sectors }, wall: { type: 'FeatureCollection', features: wall }, strip: { type: 'FeatureCollection', features: strip } }, 1e6);
+  let t = topology({ sectors: { type: 'FeatureCollection', features: sectors }, wall: { type: 'FeatureCollection', features: wall }, strip: { type: 'FeatureCollection', features: strip }, staaken: { type: 'FeatureCollection', features: [westStaaken] } }, 1e6);
   t = simplify(presimplify(t), quantile(t, 0.35));
-  return { sectors: feature(t, t.objects.sectors).features, wall: feature(t, t.objects.wall).features, strip: feature(t, t.objects.strip).features };
+  return { sectors: feature(t, t.objects.sectors).features, wall: feature(t, t.objects.wall).features, strip: feature(t, t.objects.strip).features, staaken: feature(t, t.objects.staaken).features };
 })();
 
 // ── write ───────────────────────────────────────────────────────────────
 const fc = features => ({ type: 'FeatureCollection', features });
 const topo = topology({
   cshapes: fc(cshapes), land, rivers: fc(water.rivers), lakes: fc(water.lakes), deep: fc(water.deep),
-  sectors: fc(berlinTopo.sectors), wall: fc(berlinTopo.wall), strip: fc(berlinTopo.strip),
+  sectors: fc(berlinTopo.sectors), wall: fc(berlinTopo.wall), strip: fc(berlinTopo.strip), staaken: fc(berlinTopo.staaken),
 }, 1e6);
 topo.attribution = 'States 1945–1992: CShapes 2.0 (Schvitz et al., ETH Zürich), CC BY-NC-SA 4.0. Coastlines, rivers, lakes and bathymetry: Natural Earth (public domain). Berlin: Geoportal Berlin, "Verlauf der Berliner Mauer, 1989" and ALKIS Berlin Ortsteile, dl-de/zero-2-0.';
 mkdirSync('assets/data', { recursive: true });

@@ -71,6 +71,8 @@ const GLAZE = { focus: 0.62, soviet: 0.82, bloc: 0.8, west: 0.85, neutral: 0.8 }
 const SHELF = 'rgba(44, 52, 70, 0.996)', WATERC = 'rgba(76, 122, 172, 0.996)';
 const lighter = hex => { const n = parseInt(hex.slice(1), 16), m = c => Math.round(c + (255 - c) * 0.38); return `rgb(${m(n >> 16)},${m((n >> 8) & 255)},${m(n & 255)})`; };
 export const WALL_UP = '1961-08-13', WALL_DOWN = '1989-11-09';
+// West Staaken, inside the British sector, was taken over by the GDR's police on 1 February 1951
+const STAAKEN_GDR = '1951-02-01';
 
 const ringFix = poly => (geoArea(poly) > 2 * Math.PI ? { type: 'Polygon', coordinates: poly.coordinates.map(r => r.slice().reverse()) } : poly);
 // d3 wants clockwise outer rings; simplification can leave a few the other way round, which would flood the globe
@@ -91,6 +93,7 @@ export function featuresOf(data) {
   const berlin = data.objects.sectors ? {
     sectors: feature(data, data.objects.sectors).features.map(upright),
     wall: feature(data, data.objects.wall).features, strip: feature(data, data.objects.strip).features.map(upright),
+    staaken: data.objects.staaken ? feature(data, data.objects.staaken).features.map(upright) : [],
   } : null;
   // water (borders.json only): rivers { r: rank }, lakes { r: rank }, and sea deeper than 200 m around Europe
   const water = data.objects.rivers ? {
@@ -159,7 +162,9 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90], tex
     const [lat, lon, ax, ay] = flag.at, px = (lon - box[0]) * sx, py = (box[3] - lat) * sy;
     const fw = Math.max(x1 - x0, (y1 - y0) * flag.aspect), fh = fw / flag.aspect;
     const fx = Math.min(x0, Math.max(x1 - fw, px - ax * fw)), fy = Math.min(y0, Math.max(y1 - fh, py - ay * fh));
-    ctx.save(); ctx.beginPath(); path(f); ctx.clip();
+    // from February 1951 West Staaken is cut out of the British sector (even-odd: a second ring inside makes a hole)
+    const cutOut = f.properties.sector === 'uk' && date >= STAAKEN_GDR ? feats.berlin.staaken : [];
+    ctx.save(); ctx.beginPath(); path(f); for (const g of cutOut) path(g); ctx.clip('evenodd');
     ctx.fillStyle = SECTOR_GROUND; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
     ctx.globalAlpha = FLAG_ALPHA; flag.draw(ctx, fx, fy, fw, fh, date);
     ctx.restore();
@@ -192,15 +197,18 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90], tex
     }
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'; ctx.lineWidth = Math.max(1, W / 2400);
     for (const f of feats.berlin.sectors) { ctx.beginPath(); path(f); ctx.stroke(); }
-    // the names, about 12 CSS px high where the camera holds (detail textures only)
+    // the names, about 12 CSS px high where the camera holds (detail textures only), smaller where a sector is too
+    // narrow on screen for them (a phone at city scale): a mono capital with its spacing is ~0.72 of the size wide
     if (!world) {
-      const size = 12 / css;
-      ctx.font = `500 ${size.toFixed(1)}px "Plex Mono", ui-monospace, Menlo, monospace`;
-      ctx.letterSpacing = `${(size * 0.12).toFixed(1)}px`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)'; ctx.shadowColor = 'rgba(6, 7, 12, 0.85)'; ctx.shadowBlur = size * 0.6;
-      for (const [lat, lon, name] of Object.values(SECTOR_NAMES)) {
-        const x = (lon - box[0]) * sx, y = (box[3] - lat) * sy;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)'; ctx.shadowColor = 'rgba(6, 7, 12, 0.85)';
+      for (const f of feats.berlin.sectors) {
+        const [lat, lon, name] = SECTOR_NAMES[f.properties.sector], x = (lon - box[0]) * sx, y = (box[3] - lat) * sy;
         if (x < 0 || x > W || y < 0 || y > H) continue;
+        const [[x0], [x1]] = path.bounds(f), size = Math.min(12 / css, 0.75 * (x1 - x0) / (0.72 * name.length));
+        if (size * css < 6) continue; // under 6 CSS px a name is noise
+        ctx.font = `500 ${size.toFixed(1)}px "Plex Mono", ui-monospace, Menlo, monospace`;
+        ctx.letterSpacing = `${(size * 0.12).toFixed(1)}px`; ctx.shadowBlur = size * 0.6;
         ctx.fillText(name, x, y);
       }
       ctx.letterSpacing = '0px'; ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';

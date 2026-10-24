@@ -112,7 +112,7 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   ~215 m) where it is under 0.45 km; footprints from view.js on four reference screens, so rebuild after moving a
   camera (`ONLY=0,1` rebuilds just those levels). Flat ground is 0.75. The engine (`terrainOf`) composes a state's
   tiles over its detail box (at most 2048 px) on the main thread, coarse level first, and never waits for them: the
-  base relief shows until they arrive. `composeTiles` draws with high-quality smoothing and leaves out a level more
+  base relief shows until they arrive. Tiles are JPEG quality 62 (the shading is soft; 78 was a quarter larger). `composeTiles` draws with high-quality smoothing and leaves out a level more
   than 3× finer than its canvas, so a continent-wide view never downloads z1. Attribution is in each chapter's note.
 - `borders.json` now uses Natural Earth 1:10m land, rivers (+ Europe), lakes (+ Europe) and the 200 m bathymetry
   (`tools/.cache/ne/`, from naciscdn.org), keeps 80% of points in a central-European CORE box, and is quantized at 1e6.
@@ -126,8 +126,10 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   Stars and Stripes with 48, 49 or 50 stars by date, the Union Flag, the Tricolore, the Soviet flag) at 72% over a dark
   ground, on every Berlin scene from 1945 to 1989. Each flag is the smallest that covers its sector's bounds, slid so its
   canton or emblem comes near a chosen point (`at`); rivers and lakes are painted on top. The sector names are lettered
-  in the map itself (Plex Mono capitals ~12 CSS px at the held camera, detail textures only; the worker loads the font),
-  then comes the border strip after August 1961. The Wall stands as a ribbon (`wallMesh`); a scene camera may set `tilt` (KQ6 13, 14
+  in the map itself (Plex Mono capitals up to ~12 CSS px at the held camera, shrunk to fit a sector that is narrow on
+  screen; detail textures only; the worker loads the font), then comes the border strip after August 1961. West
+  Staaken (`staaken` in borders.json: the Staaken Ortsteil west of the 1989 front wall, cut with `polygon-clipping` in
+  build-maps) leaves the British flag from 1 February 1951, when the GDR's police took it over. The Wall stands as a ribbon (`wallMesh`); a scene camera may set `tilt` (KQ6 13, 14
   and 30 look across the centre from 26–28 km at 32°). The June 1953 aerial photographs were tried as a base layer
   and dropped: the official mosaic is a patchwork of differently exposed frames and read as unsteady.
 - Borders and focus outlines are `LineSegments2` (1.25 px and 2 px on screen, antialiased) at radius 1, scaled per frame
@@ -142,6 +144,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - History chapter (2026-10-23): borders.json 414 KB (315 state versions, Europe detailed, rest coarse, Berlin layers);
   relief 174 + 366 KB; world.js 582 KB. Painting one scene's textures takes 55–120 ms on the dev Mac (Berlin about
   265 ms), so neighbours are painted in idle time while the reader reads. Checked in the preview at desktop and 375 px.
+- KQ6 on the live site (2026-10-25, empty cache, dev Mac): first load 891 KB in 21 files (borders.json 456 KB and
+  world.js 171 KB compressed), globe ready in 2.6 s. Reading the whole chapter adds 4.7 MB of terrain tiles on desktop
+  and 4.2 MB on a phone (counted with the engine's rules), all in the background.
 - Globe bundle 595 KB, 163 KB gzipped; 5,748 land dots from Natural Earth 110m.
 - Engine (2026-10-23, dev Mac, preview): id rasters 17–59 ms and Economics paints 160–207 ms, all in the worker; KQ6
   paints 9–19 ms in the worker. A scripted scroll through the engine test drew 202 frames at 0.88 ms CPU on average
@@ -204,6 +209,8 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   hidden preview pane never runs colour transitions, so switching theme in place gives false failures. Glass bars are
   measured against the page colour, not what is behind them.
 - Economics: the chapter and the lab are drafts, not yet reviewed by an Economics teacher. The Section A data room
-  (`economics/data-room.html`) from the plan is not built. Nothing of the Economics chapter is deployed yet.
-- History chapters: only KQ6 exists (status draft, not yet teacher-reviewed). West Staaken is drawn inside the British
-  sector (it was GDR-run from 1951). Scenes have no field yet for the plan's "exam link" layer.
+  (`economics/data-room.html`) from the plan is not built. The chapter is live (pushing `main` deploys everything) and
+  linked from the Economics hub with a "draft, not yet reviewed by a teacher" label; `engine-test.html` is reachable
+  but unlinked and noindex.
+- History chapters: only KQ6 exists (status draft, not yet teacher-reviewed). Scenes have no field yet for the plan's
+  "exam link" layer.
