@@ -1,7 +1,6 @@
 // Home: the globe scrollytelling, the command-word ladder and a daily mixed quiz.
 import { boot, $, $$, gsap, ScrollTrigger, reduced } from './core.js';
 import { quiz, seeded } from './ui.js';
-import { glassChrome } from './glass.js';
 import H from './data/history.js';
 import E from './data/economics.js';
 import G from './data/geography.js';
@@ -54,7 +53,6 @@ quiz($('[data-mount="daily"]'), [], {
 });
 
 boot();
-glassChrome();
 if (!reduced) {
   gsap.from('.hero .eyebrow, .hero .lede, .hero__cta, .hero__foot', { y: 26, opacity: 0, duration: 1.3, stagger: 0.1, delay: 0.45 });
 }

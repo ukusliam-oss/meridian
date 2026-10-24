@@ -3,7 +3,6 @@ import { boot, subnav, $, reduced, gsap, icons } from './core.js';
 import { examAnatomy, topicMap, technique, commandWords, flashcards, quiz, examplesTracker } from './ui.js';
 import { heroArt } from './visuals.js';
 import { practice } from './practice.js';
-import { glassChrome } from './glass.js';
 
 const id = document.body.dataset.subject;
 const [{ default: d }, { default: pr }] = await Promise.all([import(`./data/${id}.js`), import(`./data/practice-${id}.js`)]);
@@ -49,5 +48,4 @@ lab.mount(m('lab'), d.lab);
 heroArt($('[data-art]'), id, d);
 boot();
 subnav($('.subnav'));
-glassChrome();
 if (!reduced) gsap.from('.s-hero .lede, .s-hero__stats > div, .s-hero .eyebrow, .s-hero__code', { y: 24, opacity: 0, duration: 1.2, stagger: 0.08, delay: 0.25 });

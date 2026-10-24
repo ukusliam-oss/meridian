@@ -44,8 +44,6 @@ const C = {
 
 export default {
   id: 'kq6',
-  // map focus: History amber, darkened to the brightness the old violet had, so filled states do not glare
-  accent: '#b38b4d',
   title: 'Eastern Europe, 1948–c.1989',
   question: 'How secure was the USSR\'s control over Eastern Europe, 1948–c.1989?',
   status: 'draft',

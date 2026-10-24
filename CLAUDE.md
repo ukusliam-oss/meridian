@@ -19,9 +19,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   `data-theme`, `data-tone="dark"` forces dark inside light pages), nav + phone tab bar, home, subject, labs.
   One type system everywhere: `.display/.h1/.h2` are light serif capitals whose `<em>` lead phrase sits on its own
   line in italic and the subject colour; `.mono`/`.eyebrow`/`.tag` are Plex Mono capitals; Inter for reading.
-  Violet `--brand` is the glass chrome on every page (nav, tab bar, sub-nav, chapter pill and menu, with the
-  pointer-lit `.stroke-border` rim from `glass.js` `glassChrome()`); `--accent`/`--accent-deep` is the subject
-  colour for content. Reading floor: labels 12px (`--fs-label`), notes 13px, nothing below 11px; small accent
+  The nav bar, tab bar and sub-nav are grey glass; the chapter pill and scene menu are violet glass (`--brand`, the
+  pill with `glass.js`'s pointer-lit `.stroke-border` rim); `--accent`/`--accent-deep` is the subject colour for
+  content. Reading floor: labels 12px (`--fs-label`), notes 13px, nothing below 11px; small accent
   labels on light paper use `--accent-deep` for 4.5:1.
 - `assets/js/core.js` — motion core: Lenis on GSAP's ticker, reveals, SplitText headlines,
   counters (`data-count`), magnetic buttons, nav tone, theme toggle (view-transition circle),
@@ -110,9 +110,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   page as not checked against official documents.
 
 ## Traps
-- **Map focus colour**: `chapter.js` passes the chapter's `accent` (else the page's `--accent`) to the engine, which
-  sends it to the paint worker in its `init` message. KQ6 names a darker gold (`#b38b4d`) because full History amber
-  glared as a state fill.
+- **Map colours stay the engine's own**: KQ6's focus fills, halos and marker glows are violet (`PALETTE.focus`
+  `#a084ee`), not History amber. A chapter can name `accent` (Economics does); the engine sends it to the paint
+  worker in its `init` message.
 - **The preview pane throttles requestAnimationFrame** while nothing drives it, so the globe can
   look dim or mid-zoom in screenshots. Run a short rAF loop in the page before screenshotting.
 - **Module cache**: python's http.server lets the browser cache JS modules; a `?v=` on the page

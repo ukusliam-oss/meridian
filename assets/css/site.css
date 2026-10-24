@@ -1,7 +1,7 @@
 /* Meridian — design system, shared by the hubs and the scroll chapters (chapter.css adds only the chapter layout).
    One type system everywhere: light serif capitals with an italic lead phrase for headings, Plex Mono capitals for
-   labels, Inter for reading. Violet (--brand) is the colour of the glass chrome on every page; each subject's own
-   colour (--accent) marks its content.
+   labels, Inter for reading. The nav chrome is grey glass; the chapter pill and menu are violet glass (--brand);
+   each subject's own colour (--accent) marks its content.
    Tokens → base → chrome (nav, tab bar) → primitives → home → subject → labs → motion states */
 
 @font-face { font-family: "Inter Var"; src: url(../fonts/inter.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
@@ -38,7 +38,6 @@
   --rim: linear-gradient(var(--btn-stroke-angle, 90deg), #2d257d 0%, #8e2de2 4%, #f5efff 31%, #f5efff 60%, #cbd5e1 85%, #8e2de2 100%);
   --good: #46d6a0; --bad: #ff7a6b;
   --glass: rgb(13 15 20 / .66);
-  --glass-tint: linear-gradient(90deg, rgb(45 37 125 / .14), rgb(142 45 226 / .14));
   --shadow: 0 1px 0 rgb(255 255 255 / .05) inset, 0 30px 80px -30px rgb(0 0 0 / .75);
   --ink-on-accent: #0a0b0d;
   color-scheme: dark;
@@ -50,10 +49,8 @@
   --hist: #b56800; --econ: #0a8a5c; --geo: #1a68cf;
   --hist-deep: #8f540e; --econ-deep: #0a7a51; --geo-deep: #1a5bb5;
   --brand: #6d3fd0; --brand-deep: #5a2fc2; --brand-glow: #9047ff;
-  --rim: linear-gradient(var(--btn-stroke-angle, 90deg), #6d3fd0 0%, #a37cf0 8%, rgb(22 20 12 / .1) 31%, rgb(22 20 12 / .1) 60%, #c9b8f5 85%, #6d3fd0 100%);
   --good: #0a8a5c; --bad: #d03b2f;
   --glass: rgb(250 248 244 / .74);
-  --glass-tint: linear-gradient(90deg, rgb(109 63 208 / .05), rgb(142 45 226 / .07));
   --shadow: 0 1px 2px rgb(22 20 12 / .05), 0 30px 70px -34px rgb(22 20 12 / .28);
   --ink-on-accent: #ffffff;
   color-scheme: light;
@@ -125,14 +122,14 @@ ul, ol { padding: 0; list-style: none; }
   pointer-events: auto; position: relative;
   width: min(var(--wrap), 100% - 2 * var(--gutter)); margin-inline: auto; height: 48px;
   display: flex; align-items: center; gap: 6px; padding: 0 6px 0 16px; border-radius: 999px;
-  background: var(--glass-tint), var(--glass); border: 1px solid var(--line);
+  background: var(--glass); border: 1px solid var(--line);
   -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 10px 40px -20px rgb(0 0 0 / .5);
+  box-shadow: 0 10px 40px -20px rgb(0 0 0 / .5);
   color: var(--text);
   transition: background .5s var(--ease), border-color .5s var(--ease), color .5s var(--ease);
 }
-/* The glass chrome's 1px rim (emotion-agency's v-stroke-border): its light turns towards the pointer; glass.js
-   adds the class and drives --btn-stroke-angle. Used by the nav bar, tab bar, sub-nav and the chapter pill and menu. */
+/* The chapter pill's 1px rim (emotion-agency's v-stroke-border): its light turns towards the pointer; glass.js
+   adds the class and drives --btn-stroke-angle. */
 .stroke-border { border-color: transparent !important; }
 .stroke-border::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; background: var(--rim); pointer-events: none; opacity: var(--rim-o, .7);
   -webkit-mask: linear-gradient(#fff 0 0) content-box exclude, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box exclude, linear-gradient(#fff 0 0); }
@@ -165,9 +162,9 @@ ul, ol { padding: 0; list-style: none; }
   .tabbar {
     position: fixed; z-index: 60; left: 50%; transform: translateX(-50%);
     bottom: max(12px, env(safe-area-inset-bottom)); display: flex; gap: 2px; padding: 5px;
-    border-radius: 999px; background: var(--glass-tint), var(--glass); border: 1px solid var(--line);
+    border-radius: 999px; background: var(--glass); border: 1px solid var(--line);
     -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 16px 40px -16px rgb(0 0 0 / .6); color: var(--text);
+    box-shadow: 0 16px 40px -16px rgb(0 0 0 / .6); color: var(--text);
   }
   .tabbar a { display: grid; justify-items: center; gap: 2px; min-width: 70px; padding: 7px 10px 6px; border-radius: 999px; font-size: 13px; font-weight: 560; color: var(--text-3); transition: background .25s, color .25s; }
   .tabbar a svg { width: 20px; height: 20px; }
@@ -362,7 +359,7 @@ ul, ol { padding: 0; list-style: none; }
 
 /* subnav */
 .subnav { position: sticky; top: calc(var(--nav-h) - 2px); z-index: 40; padding-block: 10px; pointer-events: none; }
-.subnav .seg { pointer-events: auto; background: var(--glass-tint), var(--glass); -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%); box-shadow: 0 10px 30px -18px rgb(0 0 0 / .5); }
+.subnav .seg { pointer-events: auto; background: var(--glass); -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%); box-shadow: 0 10px 30px -18px rgb(0 0 0 / .5); }
 .subnav .seg a { position: relative; z-index: 1; display: inline-flex; align-items: center; height: 34px; padding: 0 15px; border-radius: 999px; font-size: 13.5px; font-weight: 560; color: var(--text-2); white-space: nowrap; transition: color .3s; }
 .subnav .seg a.is-active { color: var(--text); }
 

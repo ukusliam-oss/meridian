@@ -4,7 +4,7 @@
 // The page names its data file in <body data-chapter>; anything a chapter does not set falls back to KQ6's values.
 
 import { $, $$, gsap, lenis, reduced, boot, esc } from './core.js';
-import { MT, strokeBorder, glassChrome, aurora, animIcon, drawIn, nudge } from './glass.js';
+import { MT, strokeBorder, aurora, animIcon, drawIn, nudge } from './glass.js';
 const { default: data } = await import(document.body.dataset.chapter || './data/history/kq6.js');
 const usesValues = data.scenes.some(s => (s.map && (s.map.data || s.map.spikes)) || (s.chart && (s.chart.series || []).some(sr => sr.ind)));
 const CFG = {
@@ -15,8 +15,7 @@ const CFG = {
   heroDate: data.heroDate || '1948-01-01',
   pill: data.pill || { part: 'Key question 6', date: 'Eastern Europe, 1948–<span class="lc">c.</span>1989' },
   relief: data.relief || { world: '../assets/data/relief-world.jpg', europe: '../assets/data/relief-europe.jpg', europeBox: [-15, 30, 65, 75] },
-  // the globe's focus colour is the subject colour from site.css, unless the chapter names one
-  accent: data.accent || getComputedStyle(document.body).getPropertyValue('--accent').trim() || null,
+  accent: data.accent || null,
 };
 
 // indicator values: chart series that name an indicator are drawn from them, so no figure is typed twice
@@ -198,7 +197,7 @@ menu.innerHTML = '<div class="chmenu__surface" aria-hidden="true"></div><div cla
 const menuBtn = $('[data-menu-btn]'), menuItems = $('.chmenu__items', menu), pill = $('.pillnav');
 // the pill is emotion-agency's glass button: pointer-lit rim, aurora inside, glow below on hover
 pill.insertAdjacentHTML('afterbegin', '<div class="pillnav__aurora" aria-hidden="true"><canvas></canvas></div><div class="pillnav__shadow" aria-hidden="true"></div>');
-aurora($('.pillnav__aurora canvas', pill)); strokeBorder(pill); glassChrome();
+aurora($('.pillnav__aurora canvas', pill)); strokeBorder(pill);
 strokeBorder(menu); menu.classList.remove('stroke-border'); // the menu's surface draws its own rim; it only takes the light angle
 // their icons: the menu lines draw in, row chevrons nudge, when the pointer arrives
 $('svg', menuBtn).innerHTML = '<path d="M4 9h16"/><path d="M4 15h16"/>';

@@ -4,7 +4,6 @@
 //                     viewport centre + 90deg, eased with 1 - exp(-0.95 dt)); tilt on phones without a fine pointer
 //   aurora(canvas)    their CustomButton gradient: six slow violet wave layers drawn on a canvas, blurred by CSS
 //   animIcon(svg, b)  their animated icons: a GSAP timeline that restarts when the closest link or button is entered
-//   glassChrome()     the same rim on the site's own glass chrome (nav bar, phone tab bar, sub-nav), on every page
 // MT is their base duration, 1/phi (about 0.618 s); every icon timing is a fraction of it.
 import { gsap, reduced } from './core.js';
 
@@ -31,10 +30,6 @@ export function strokeBorder(el) {
   if (matchMedia('(pointer: fine)').matches) addEventListener('pointermove', e => { px = e.clientX; py = e.clientY; }, { passive: true });
   else addEventListener('deviceorientation', e => aim(Math.atan2(e.beta ?? 0, e.gamma ?? 0) * 180 / Math.PI + 90)); // no permission prompt
   gsap.ticker.add(strokeTick);
-}
-
-export function glassChrome() {
-  for (const el of document.querySelectorAll('.nav__bar, .tabbar, .subnav .seg')) strokeBorder(el);
 }
 
 // ── aurora ──────────────────────────────────────────────────────────────────
