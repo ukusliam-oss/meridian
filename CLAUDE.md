@@ -21,7 +21,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   line in grey italic (only chapter openings, part titles and the Paper 2 title colour it); `.mono`/`.eyebrow`/`.tag` are Plex Mono capitals; Inter for reading.
   The nav bar, tab bar and sub-nav are grey glass; the chapter pill and scene menu are violet glass (`--brand`, the
   pill with `glass.js`'s pointer-lit `.stroke-border` rim); `--accent`/`--accent-deep` is the subject colour for
-  content. Reading floor: labels 12px (`--fs-label`), notes 13px, nothing below 11px; small accent
+  content. Small labels (eyebrows, mono headings, "Step 0n", panel labels, table heads, practice part letters) are one
+  grey, `--text-3`, never the subject colour: colour is kept for headings' accents, links, tags and data, so the eye
+  is not pulled around. Reading floor: labels 12px (`--fs-label`), notes 13px, nothing below 11px; small accent
   labels on light paper use `--accent-deep` for 4.5:1.
 - `assets/js/core.js` — motion core: Lenis on GSAP's ticker, reveals, SplitText headlines,
   counters (`data-count`), magnetic buttons, nav tone, theme toggle (view-transition circle),

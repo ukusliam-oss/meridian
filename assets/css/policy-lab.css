@@ -2,7 +2,7 @@
 .plab { --lab-acc: var(--acc, #46d6a0); --lab-bad: #ff9a7a; --lab-line: rgb(255 255 255 / .09); color: #eeedf6; margin-top: 18px; }
 .plab .mono { font-family: var(--mono); font-size: var(--fs-label); font-weight: 500; letter-spacing: .02em; text-transform: uppercase; }
 .plab__head { display: grid; gap: 10px; max-width: 760px; }
-.plab__kicker { color: var(--lab-acc); }
+.plab__kicker { color: var(--text-3, rgb(243 241 235 / .58)); }
 .plab__intro { font-size: 17px; line-height: 1.55; color: rgb(238 237 246 / .86); }
 .plab__warn summary { cursor: pointer; display: inline-block; padding: 6px 11px; border-radius: 999px; border: 1px solid rgb(255 255 255 / .18); color: rgb(255 255 255 / .8); list-style: none; }
 .plab__warn summary::-webkit-details-marker { display: none; }
@@ -18,7 +18,7 @@
 .plab__dials, .plab__main { border-radius: var(--r-md, 20px); background: rgb(10 12 18 / .78); border: 1px solid var(--lab-line); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .plab__dials { padding: 14px 16px; display: grid; gap: 10px; }
 .plab__group { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; }
-.plab__group legend { color: var(--lab-acc); margin-bottom: 8px; }
+.plab__group legend { color: var(--text-3, rgb(243 241 235 / .58)); margin-bottom: 8px; }
 .plab__group + .plab__group { padding-top: 12px; border-top: 1px solid var(--lab-line); }
 .plab__dial { display: grid; gap: 5px; }
 .plab__dl { display: flex; justify-content: space-between; gap: 10px; font-size: 14.5px; }

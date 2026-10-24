@@ -23,7 +23,7 @@
 .pr__tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .pr__table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .pr__table th, .pr__table td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
-.pr__table thead th { font: 500 var(--fs-label)/1.25 var(--mono); letter-spacing: .02em; text-transform: uppercase; color: var(--text-2); white-space: normal; vertical-align: bottom; }
+.pr__table thead th { font: 500 var(--fs-label)/1.25 var(--mono); letter-spacing: .02em; text-transform: uppercase; color: var(--text-3); white-space: normal; vertical-align: bottom; }
 .pr__table tbody th { font-weight: 600; color: var(--text); }
 .pr__table td { color: var(--text-2); }
 .pr__table tbody tr:last-child > * { border-bottom: 0; }
@@ -39,7 +39,7 @@
 .pr__part { border-radius: 18px; border: 1px solid var(--line); background: color-mix(in oklab, var(--surface-2) 60%, transparent); transition: border-color .3s, background .3s; }
 .pr__part.is-open { border-color: var(--line-2); background: var(--surface-2); }
 .pr__q { display: grid; grid-template-columns: 52px 1fr auto; gap: 14px; align-items: start; padding: 18px 18px 6px; }
-.pr__k { font-size: 14px; font-weight: 700; color: var(--accent); padding-top: 2px; font-variant-numeric: tabular-nums; }
+.pr__k { font-size: 14px; font-weight: 700; color: var(--text-2); padding-top: 2px; font-variant-numeric: tabular-nums; }
 .pr__stem { font-size: 16.5px; line-height: 1.5; letter-spacing: -.012em; color: var(--text); text-wrap: pretty; }
 .pr__m { white-space: nowrap; font-size: 13px; font-weight: 650; color: var(--text-2); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line-2); font-variant-numeric: tabular-nums; }
 .pr__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 18px 14px 84px; }
@@ -59,7 +59,7 @@
 .pr__ms-in { display: grid; gap: 14px; padding: 4px 18px 20px 84px; }
 @media (max-width: 640px) { .pr__ms-in { padding: 4px 14px 18px; } }
 .pr__block { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
-.pr__block h5 { margin: 0; font: 500 var(--fs-label)/1.25 var(--mono); letter-spacing: .02em; text-transform: uppercase; color: var(--accent); }
+.pr__block h5 { margin: 0; font: 500 var(--fs-label)/1.25 var(--mono); letter-spacing: .02em; text-transform: uppercase; color: var(--text-3); }
 .pr__block > p { font-size: 14.5px; line-height: 1.55; color: var(--text-2); max-width: 74ch; }
 .pr__block b { color: var(--text); font-weight: 620; }
 .pr__list { display: grid; gap: 7px; }
@@ -67,14 +67,13 @@
 .pr__list li::before { content: ""; position: absolute; left: 1px; top: .66em; width: 6px; height: 1.5px; background: var(--accent); }
 .pr__levels { display: grid; gap: 4px; }
 .pr__lv { display: grid; grid-template-columns: 64px 1fr 52px; gap: 12px; align-items: baseline; padding: 9px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; line-height: 1.45; }
-.pr__lv b { font-size: 13px; font-weight: 650; color: var(--accent); white-space: nowrap; }
+.pr__lv b { font-size: 13px; font-weight: 650; color: var(--text-2); white-space: nowrap; }
 .pr__lv span { color: var(--text-2); }
 .pr__lv em { font-style: normal; text-align: right; font-weight: 620; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pr__group { display: grid; gap: 8px; padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
-.pr__group h6 { margin: 0; font: 500 var(--fs-label)/1.25 var(--mono); letter-spacing: .02em; text-transform: uppercase; color: var(--text-2); }
+.pr__group h6 { margin: 0; font: 500 var(--fs-label)/1.25 var(--mono); letter-spacing: .02em; text-transform: uppercase; color: var(--text-3); }
 .pr__group--yes h6 { color: var(--good); }
 .pr__group--no h6 { color: var(--bad); }
-.pr__group--judge h6 { color: var(--accent); }
 .pr__group p { font-size: 14.5px; line-height: 1.55; color: var(--text-2); }
 .pr__working { display: grid; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); font-size: 14.5px; font-variant-numeric: tabular-nums; color: var(--text); }
 .pr__tip { font-size: 13.5px; line-height: 1.5; color: var(--text-2); padding: 12px 14px; border-radius: 12px; border-left: 3px solid var(--accent); background: var(--surface); }
