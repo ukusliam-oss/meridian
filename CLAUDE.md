@@ -122,10 +122,12 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   alpha. Polygons from Natural Earth are filled even-odd, so holes stay holes whatever their winding. The shelf is a
   neutral slate just above the ocean's black, painted over the part of a box the bathymetry covers: a blue shelf
   matched the Western bloc's navy and Britain and France sank into it. Rivers thin out by rank as texels grow.
-- Berlin. `city: 'berlin'` paints the four sectors opaque in their occupying powers' colours (`SECTORS` in paint.js:
-  American blue, British teal, French indigo, Soviet red) on every Berlin scene, 1945 to 1989, names them in the map
-  itself (Plex Mono capitals ~12 CSS px at the held camera, detail textures only; the worker loads the font), then the
-  border strip after August 1961. The Wall stands as a ribbon (`wallMesh`); a scene camera may set `tilt` (KQ6 13, 14
+- Berlin. `city: 'berlin'` lays each sector's occupying power's flag over it (`FLAGS` in paint.js, drawn in code: the
+  Stars and Stripes with 48, 49 or 50 stars by date, the Union Flag, the Tricolore, the Soviet flag) at 72% over a dark
+  ground, on every Berlin scene from 1945 to 1989. Each flag is the smallest that covers its sector's bounds, slid so its
+  canton or emblem comes near a chosen point (`at`); rivers and lakes are painted on top. The sector names are lettered
+  in the map itself (Plex Mono capitals ~12 CSS px at the held camera, detail textures only; the worker loads the font),
+  then comes the border strip after August 1961. The Wall stands as a ribbon (`wallMesh`); a scene camera may set `tilt` (KQ6 13, 14
   and 30 look across the centre from 26–28 km at 32°). The June 1953 aerial photographs were tried as a base layer
   and dropped: the official mosaic is a patchwork of differently exposed frames and read as unsteady.
 - Borders and focus outlines are `LineSegments2` (1.25 px and 2 px on screen, antialiased) at radius 1, scaled per frame

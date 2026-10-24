@@ -13,10 +13,58 @@ export const dayNum = s => { const [y, m, d] = s.split('-').map(Number); return 
 export const PALETTE = {
   land: '#2a303d', soviet: '#9b2c35', bloc: '#6e3a3c', west: '#2d4a6e', neutral: '#4b5160', focus: '#a084ee',
 };
-// Berlin's four sectors in the colour of the power that held each, opaque, from 1945 to 1990 (West Berlin stayed under
-// the three Western Allies, East Berlin was the Soviet sector), lettered in the map at a hand-placed point
-const SECTORS = { us: '#4270ac', uk: '#3c837f', fr: '#6966b6', su: '#a2434c' };
-const SECTOR_NAMES = { us: [52.44, 13.27, 'AMERICAN SECTOR'], uk: [52.51, 13.21, 'BRITISH SECTOR'], fr: [52.585, 13.30, 'FRENCH SECTOR'], su: [52.53, 13.47, 'SOVIET SECTOR'] };
+// Berlin's four sectors carry the flag of the power that held each, from 1945 to 1990 (West Berlin stayed under the
+// three Western Allies, East Berlin was the Soviet sector), a glaze over a dark ground, named at a hand-placed point
+const FLAG_ALPHA = 0.72, SECTOR_GROUND = '#151925';
+const star = (ctx, x, y, r, inner = 0.382) => { // a five-pointed star, point up
+  ctx.beginPath();
+  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, q = k % 2 ? r * inner : r; ctx.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); }
+  ctx.closePath();
+};
+const FLAGS = {
+  // Stars and Stripes: 48 stars until 4 July 1959, 49 for a year, then 50
+  us: { aspect: 1.9, at: [52.455, 13.255, 0.2, 0.27], draw(ctx, x, y, w, h, date) {
+    for (let k = 0; k < 13; k++) { ctx.fillStyle = k % 2 ? '#ffffff' : '#b22234'; ctx.fillRect(x, y + k * h / 13, w, h / 13 + 0.5); }
+    const cw = 0.76 * h, ch = 7 * h / 13, r = 0.0308 * h;
+    ctx.fillStyle = '#3c3b6e'; ctx.fillRect(x, y, cw, ch);
+    ctx.fillStyle = '#ffffff';
+    const rows = date < '1959-07-04' ? Array(6).fill(8) : date < '1960-07-04' ? Array(7).fill(7) : [6, 5, 6, 5, 6, 5, 6, 5, 6];
+    rows.forEach((n, i) => {
+      const odd = rows.length === 9 && i % 2, cols = rows.length === 9 ? 6 : n;
+      for (let k = 0; k < n; k++) { star(ctx, x + cw * ((k + (odd ? 1 : 0.5)) / cols), y + ch * (i + 0.5) / rows.length, r); ctx.fill(); }
+    });
+  } },
+  // Union Flag, 2:1 (the red saltire drawn on the centre line)
+  uk: { aspect: 2, at: [52.51, 13.2, 0.5, 0.5], draw(ctx, x, y, w, h) {
+    const u = h / 30;
+    ctx.fillStyle = '#012169'; ctx.fillRect(x, y, w, h);
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.lineCap = 'butt';
+    for (const [lw, c] of [[6 * u, '#ffffff'], [2 * u, '#c8102e']]) {
+      ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y + h); ctx.moveTo(x + w, y); ctx.lineTo(x, y + h); ctx.stroke();
+    }
+    ctx.restore();
+    for (const [t, c] of [[10 * u, '#ffffff'], [6 * u, '#c8102e']]) { ctx.fillStyle = c; ctx.fillRect(x + w / 2 - t / 2, y, t, h); ctx.fillRect(x, y + h / 2 - t / 2, w, t); }
+  } },
+  // Tricolore, 3:2
+  fr: { aspect: 1.5, at: [52.585, 13.31, 0.5, 0.5], draw(ctx, x, y, w, h) {
+    ['#0055a4', '#ffffff', '#ef4135'].forEach((c, k) => { ctx.fillStyle = c; ctx.fillRect(x + k * w / 3, y, w / 3 + 0.5, h); });
+  } },
+  // the Soviet flag, 2:1: red with the gold hammer and sickle under a gold-edged star near the hoist
+  su: { aspect: 2, at: [52.53, 13.475, 0.135, 0.3], draw(ctx, x, y, w, h) {
+    ctx.fillStyle = '#cc0000'; ctx.fillRect(x, y, w, h);
+    const s = 0.24 * h, cx = x + 0.27 * h, cy = y + 0.36 * h, gold = '#ffd700';
+    ctx.strokeStyle = gold; ctx.lineWidth = 0.014 * h; ctx.lineJoin = 'miter'; star(ctx, cx, y + 0.12 * h, 0.065 * h); ctx.stroke();
+    ctx.lineCap = 'round'; ctx.lineWidth = 0.09 * s;
+    // sickle: from the handle at the lower left, round the right and over the top, the tip to the upper left
+    ctx.beginPath(); ctx.arc(cx + 0.04 * s, cy - 0.04 * s, 0.4 * s, 0.75 * Math.PI, -0.8 * Math.PI, true); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 0.24 * s, cy + 0.24 * s); ctx.lineTo(cx - 0.42 * s, cy + 0.42 * s); ctx.stroke();
+    // hammer: handle from lower left to upper right, head across its top
+    ctx.beginPath(); ctx.moveTo(cx - 0.36 * s, cy + 0.36 * s); ctx.lineTo(cx + 0.16 * s, cy - 0.16 * s); ctx.stroke();
+    ctx.lineWidth = 0.15 * s; ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.moveTo(cx + 0.06 * s, cy - 0.3 * s); ctx.lineTo(cx + 0.3 * s, cy - 0.06 * s); ctx.stroke();
+  } },
+};
+const SECTOR_NAMES = { us: [52.43, 13.36, 'AMERICAN SECTOR'], uk: [52.49, 13.19, 'BRITISH SECTOR'], fr: [52.6, 13.31, 'FRENCH SECTOR'], su: [52.47, 13.52, 'SOVIET SECTOR'] };
 // how much of a state colour covers the land beneath it; the focus colour is bright, so it is the thinnest glaze
 const GLAZE = { focus: 0.62, soviet: 0.82, bloc: 0.8, west: 0.85, neutral: 0.8 };
 // water colours, with alpha 254/255 (see paintTexture): the shallow sea, and rivers and lakes
@@ -103,6 +151,19 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90], tex
     ctx.save(); ctx.clip(); ctx.globalAlpha = 0.5; ctx.strokeStyle = lighter(c); ctx.lineWidth = edge * 2; ctx.lineJoin = 'round'; ctx.stroke(); ctx.restore();
   }
   ctx.globalAlpha = 1;
+  // Berlin at city scale: each sector a dark ground with its power's flag over it, laid before the water so the Spree
+  // and the Havel lakes stay on top. Each flag is the smallest that covers the sector's bounds, slid within its slack so
+  // its point `at` (the canton, the emblem, or the middle) comes as close as it can to a chosen place in the sector
+  if (map.city === 'berlin' && feats.berlin) for (const f of feats.berlin.sectors) {
+    const flag = FLAGS[f.properties.sector], [[x0, y0], [x1, y1]] = path.bounds(f);
+    const [lat, lon, ax, ay] = flag.at, px = (lon - box[0]) * sx, py = (box[3] - lat) * sy;
+    const fw = Math.max(x1 - x0, (y1 - y0) * flag.aspect), fh = fw / flag.aspect;
+    const fx = Math.min(x0, Math.max(x1 - fw, px - ax * fw)), fy = Math.min(y0, Math.max(y1 - fh, py - ay * fh));
+    ctx.save(); ctx.beginPath(); path(f); ctx.clip();
+    ctx.fillStyle = SECTOR_GROUND; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.globalAlpha = FLAG_ALPHA; flag.draw(ctx, fx, fy, fw, fh, date);
+    ctx.restore();
+  }
   ctx.restore();
   // lakes and rivers: cut out of the land, then painted as water (alpha 254, as the shelf); a river is wider the higher
   // its rank, about 0.8–2.2 screen pixels
@@ -122,10 +183,9 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90], tex
     for (const f of countries) if (focus.includes(f.properties.key)) { ctx.beginPath(); path(f); ctx.stroke(); }
     ctx.restore();
   }
-  // Berlin at city scale: the four sectors of 1945, then West Berlin as one Western enclave, then the border strip
+  // Berlin, over its flags: the border strip, the sector lines and the names
   const city = map.city === 'berlin' && feats.berlin;
   if (city) {
-    for (const f of feats.berlin.sectors) { ctx.fillStyle = SECTORS[f.properties.sector]; ctx.beginPath(); path(f); ctx.fill(); }
     if (date >= WALL_UP) {
       ctx.fillStyle = 'rgba(232, 226, 255, 0.34)';
       for (const f of feats.berlin.strip) { ctx.beginPath(); path(f); ctx.fill(); }
@@ -137,13 +197,13 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90], tex
       const size = 12 / css;
       ctx.font = `500 ${size.toFixed(1)}px "Plex Mono", ui-monospace, Menlo, monospace`;
       ctx.letterSpacing = `${(size * 0.12).toFixed(1)}px`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)'; ctx.shadowColor = 'rgba(6, 7, 12, 0.85)'; ctx.shadowBlur = size * 0.6;
       for (const [lat, lon, name] of Object.values(SECTOR_NAMES)) {
         const x = (lon - box[0]) * sx, y = (box[3] - lat) * sy;
         if (x < 0 || x > W || y < 0 || y > H) continue;
         ctx.fillText(name, x, y);
       }
-      ctx.letterSpacing = '0px';
+      ctx.letterSpacing = '0px'; ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
     }
   } else if (box[2] - box[0] < 360) {
     // an inner glow in the focus countries so the eye lands on them; kept inside the border, so it never spills onto a
