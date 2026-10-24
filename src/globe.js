@@ -65,7 +65,7 @@ const HAZARDS = [
 // lat, lon, camera distance, horizontal / vertical shift (fraction of viewport), accent, layer weights
 const VIEWS = [
   { lat: 16, lon: 34, dist: 4.25, sx: 0.21, sy: 0.02, accent: '#9db7ff' },
-  { lat: 47, lon: 17, dist: 2.15, sx: 0.17, sy: 0, accent: '#f0b45a' },
+  { lat: 47, lon: 17, dist: 2.15, sx: 0.17, sy: 0, accent: '#b693ff' },
   { lat: 24, lon: 74, dist: 3.6, sx: 0.19, sy: 0, accent: '#46d6a0' },
   { lat: 6, lon: 160, dist: 3.6, sx: 0.19, sy: 0, accent: '#5fb0ff' },
 ];
@@ -258,7 +258,7 @@ export function createGlobe(host, { reduced = false } = {}) {
   const land = landPoints(dotU);
   globe.add(ocean, land);
 
-  const histU = { uTime: time, uOpacity: { value: 0 }, uSpeed: { value: 0.32 }, uColor: { value: new Color('#f6c27a') } };
+  const histU = { uTime: time, uOpacity: { value: 0 }, uSpeed: { value: 0.32 }, uColor: { value: new Color('#c9b3ff') } };
   const geoU = { uTime: time, uOpacity: { value: 0 }, uSpeed: { value: 0.55 }, uColor: { value: new Color('#7cc0ff') } };
   const histLayer = pulseLayer(HISTORY, 0.075, histU);
   const geoLayer = pulseLayer(HAZARDS, 0.11, geoU);

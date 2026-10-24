@@ -32,8 +32,8 @@
   --bg: #07080b; --bg-2: #0b0d11; --surface: #101318; --surface-2: #161a20; --surface-3: #1d222a;
   --line: rgb(255 255 255 / .075); --line-2: rgb(255 255 255 / .14); --line-3: rgb(255 255 255 / .24);
   --text: #f3f1eb; --text-2: rgb(243 241 235 / .74); --text-3: rgb(243 241 235 / .58);
-  --hist: #f0b45a; --econ: #46d6a0; --geo: #5fb0ff;
-  --hist-deep: #8f540e; --econ-deep: #0f7a58; --geo-deep: #1f5fae;
+  --hist: #b693ff; --econ: #46d6a0; --geo: #5fb0ff;
+  --hist-deep: #6d3fd0; --econ-deep: #0f7a58; --geo-deep: #1f5fae;
   --brand: #b693ff; --brand-deep: #6d3fd0; --brand-glow: #9047ff;
   --rim: linear-gradient(var(--btn-stroke-angle, 90deg), #2d257d 0%, #8e2de2 4%, #f5efff 31%, #f5efff 60%, #cbd5e1 85%, #8e2de2 100%);
   --good: #46d6a0; --bad: #ff7a6b;
@@ -45,11 +45,11 @@
 [data-theme="light"] {
   --bg: #f6f4ef; --bg-2: #efece5; --surface: #ffffff; --surface-2: #f8f6f2; --surface-3: #efece6;
   --line: rgb(22 20 12 / .085); --line-2: rgb(22 20 12 / .15); --line-3: rgb(22 20 12 / .26);
-  --text: #15140f; --text-2: rgb(21 20 15 / .7); --text-3: rgb(21 20 15 / .62);
-  --hist: #b56800; --econ: #0a8a5c; --geo: #1a68cf;
-  --hist-deep: #8f540e; --econ-deep: #0a7a51; --geo-deep: #1a5bb5;
+  --text: #15140f; --text-2: rgb(21 20 15 / .76); --text-3: rgb(21 20 15 / .64);
+  --hist: #6d3fd0; --econ: #087a50; --geo: #1a68cf;
+  --hist-deep: #5a2fc2; --econ-deep: #066343; --geo-deep: #1a5bb5;
   --brand: #6d3fd0; --brand-deep: #5a2fc2; --brand-glow: #9047ff;
-  --good: #0a8a5c; --bad: #d03b2f;
+  --good: #087a50; --bad: #b8322a;
   --glass: rgb(250 248 244 / .74);
   --shadow: 0 1px 2px rgb(22 20 12 / .05), 0 30px 70px -34px rgb(22 20 12 / .28);
   --ink-on-accent: #ffffff;
@@ -59,6 +59,10 @@
 [data-subject="economics"] { --accent: var(--econ); --accent-deep: var(--econ-deep); }
 [data-subject="geography"] { --accent: var(--geo); --accent-deep: var(--geo-deep); }
 :root { --accent: var(--text); --accent-deep: var(--text); }
+/* a dark band inside a light page (hero, chapter cards) takes the dark-theme subject colour, redefined there */
+[data-subject="history"] [data-tone="dark"] { --accent: var(--hist); --accent-deep: var(--hist-deep); }
+[data-subject="economics"] [data-tone="dark"] { --accent: var(--econ); --accent-deep: var(--econ-deep); }
+[data-subject="geography"] [data-tone="dark"] { --accent: var(--geo); --accent-deep: var(--geo-deep); }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
@@ -108,6 +112,8 @@ ul, ol { padding: 0; list-style: none; }
 /* small accent-coloured labels on light paper take the deep shade, so they keep 4.5:1 contrast */
 [data-theme="light"] [data-subject] :is(.eyebrow, .lab__side h3, .matrix .mh, .footer h4, .door__go, .paper__name, .topic__code, .pr__block h5, .h3 em) { color: var(--accent-deep); }
 [data-theme="light"] [data-subject] [data-tone="dark"] :is(.eyebrow, .door__go) { color: var(--accent); }
+[data-theme="light"] .change__level { color: var(--accent-deep); }
+[data-theme="light"] .rung__lvl { color: color-mix(in oklab, var(--rc) 55%, #000); }
 /* pages without a subject (home) keep their headings' italics and labels grey */
 body:not([data-subject]) .footer h4 { color: var(--text-2); }
 body:not([data-subject]) .eyebrow { color: var(--text-3); }
@@ -170,7 +176,7 @@ body:not([data-subject]) .eyebrow { color: var(--text-3); }
     -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
     box-shadow: 0 16px 40px -16px rgb(0 0 0 / .6); color: var(--text);
   }
-  .tabbar a { display: grid; justify-items: center; gap: 2px; min-width: 70px; padding: 7px 10px 6px; border-radius: 999px; font-size: 13px; font-weight: 560; color: var(--text-3); transition: background .25s, color .25s; }
+  .tabbar a { display: grid; justify-items: center; gap: 2px; min-width: 70px; padding: 7px 10px 6px; border-radius: 999px; font-size: 13px; font-weight: 560; color: var(--text-2); transition: background .25s, color .25s; }
   .tabbar a svg { width: 20px; height: 20px; }
   .tabbar a[aria-current="page"] { color: var(--text); background: var(--line); }
   .tabbar a[aria-current="page"] svg { color: var(--c, var(--text)); }
@@ -250,7 +256,7 @@ body:not([data-subject]) .eyebrow { color: var(--text-3); }
 .globe-label--l > span { transform: translate(calc(-100% - 12px), -50%); }
 .globe-label b { font-weight: 500; color: #fff; }
 .globe-label i { font-style: normal; color: rgb(255 255 255 / .66); font-variant-numeric: tabular-nums; }
-.globe-label.is-0 b { color: #ffd59a; }
+.globe-label.is-0 b { color: #d9c8ff; }
 .globe-label.is-1 b { color: #98f3cd; }
 .globe-label.is-2 b { color: #a9d4ff; }
 .scope__content { position: relative; margin-top: -100vh; margin-top: -100svh; pointer-events: none; }
@@ -366,12 +372,41 @@ body:not([data-subject]) .eyebrow { color: var(--text-3); }
 .subnav .seg { pointer-events: auto; background: var(--glass); -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%); box-shadow: 0 10px 30px -18px rgb(0 0 0 / .5); }
 .subnav .seg a { position: relative; z-index: 1; display: inline-flex; align-items: center; height: 34px; padding: 0 15px; border-radius: 999px; font-size: 13.5px; font-weight: 560; color: var(--text-2); white-space: nowrap; transition: color .3s; }
 .subnav .seg a.is-active { color: var(--text); }
+.seg__sep { flex: none; align-self: center; width: 1px; height: 16px; margin: 0 4px; background: var(--line-2); }
+
+/* the four-step path under the subject hero: each card opens its step; the last section of a step links on */
+.path { padding-block: clamp(48px, 6vw, 80px) clamp(24px, 3vw, 40px); }
+.path .eyebrow { margin-bottom: 22px; }
+.path__steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: none; }
+@media (max-width: 1000px) { .path__steps { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .path__steps { grid-template-columns: 1fr; gap: 8px; } }
+.path__step { height: 100%; display: grid; grid-template-rows: auto auto 1fr auto; gap: 10px; padding: 22px 22px 20px; transition: border-color .4s var(--ease), transform .5s var(--ease); }
+.path__step:hover { border-color: color-mix(in oklab, var(--accent) 45%, transparent); transform: translateY(-3px); }
+.path__n { font: 400 44px/.9 var(--serif); color: var(--accent); font-variant-numeric: tabular-nums; }
+.path__t { font: 400 clamp(1.5rem, 1.2rem + .8vw, 1.9rem)/.95 var(--serif); text-transform: uppercase; color: var(--text); }
+.path__t em { display: block; font-style: italic; text-transform: none; color: var(--text-2); }
+.path__d { font-size: 14.5px; line-height: 1.5; color: var(--text-2); }
+.path__in { color: var(--text-3); line-height: 1.5; }
+@media (max-width: 560px) {
+  .path__step { grid-template-columns: auto 1fr; grid-template-rows: auto; column-gap: 16px; row-gap: 6px; padding: 18px; }
+  .path__n { grid-row: span 3; font-size: 36px; }
+  .path__t { font-size: 1.45rem; }
+  .path__t em { display: inline; }
+}
+.path__next { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: clamp(40px, 5vw, 64px); padding-top: 22px; border-top: 1px solid var(--line); color: var(--text); }
+.path__next .mono { color: var(--accent); }
+.path__next b { font: 400 clamp(1.4rem, 1.1rem + 1vw, 2rem)/1 var(--serif); text-transform: uppercase; }
+.path__next b em { font-style: italic; text-transform: none; color: var(--text-2); }
+.path__next svg { width: 22px; height: 22px; color: var(--accent); transition: transform .5s var(--ease); }
+.path__next:hover svg { transform: translateX(6px); }
+[data-theme="light"] [data-subject] :is(.path__next .mono) { color: var(--accent-deep); }
 
 /* ── Subject: exam anatomy ──────────────────────────────────────────────── */
 .weights { display: flex; gap: 4px; height: 76px; border-radius: 18px; overflow: hidden; margin-bottom: 16px; }
 .weights__seg { position: relative; flex: var(--w) 1 0; display: flex; flex-direction: column; justify-content: space-between; padding: 12px 16px; color: var(--ink-on-accent); background: color-mix(in oklab, var(--accent) var(--mix), var(--surface-3)); transform-origin: left; min-width: 0; text-align: left; }
 .weights__seg b { font-size: 22px; font-weight: 650; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .weights__seg span { font-size: 13px; font-weight: 560; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-theme="light"] .weights__seg:not(.weights__seg--alt) { background: color-mix(in oklab, var(--accent-deep) var(--mix), #34313a); } /* white text keeps 4.5:1 */
 .weights__seg--alt { background: repeating-linear-gradient(135deg, color-mix(in oklab, var(--accent) 38%, var(--surface-3)) 0 10px, color-mix(in oklab, var(--accent) 30%, var(--surface-3)) 10px 20px); color: var(--text); }
 .papers { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .paper { display: grid; align-content: start; gap: 18px; }
@@ -546,7 +581,9 @@ body:not([data-subject]) .eyebrow { color: var(--text-3); }
 .tl__detail { display: grid; grid-template-columns: 160px 1fr; gap: 24px; padding: clamp(20px, 3vw, 30px); border-top: 1px solid var(--line); background: var(--surface-2); min-height: 200px; }
 .tl__date { display: grid; align-content: start; gap: 6px; }
 .tl__date b { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 54px; line-height: .9; color: var(--c); font-variant-numeric: tabular-nums; }
-.tl__date span { font-size: 13px; color: var(--text-3); }
+.tl__date span:not(.tag) { font-size: 13px; color: var(--text-3); }
+.tl__date .tag { background: color-mix(in oklab, var(--accent) 42%, #121014); }
+[data-theme="light"] .tl__date b { color: color-mix(in oklab, var(--c) 58%, #000); }
 .tl__body { display: grid; gap: 10px; align-content: start; }
 .tl__body .h3 { font-size: clamp(1.25rem, 1.1rem + .7vw, 1.6rem); }
 .tl__body p { font-size: 15px; line-height: 1.55; color: var(--text-2); max-width: 70ch; }
@@ -712,7 +749,7 @@ body:not([data-subject]) .eyebrow { color: var(--text-3); }
 .opt.ok i { background: var(--good); color: var(--ink-on-accent); border-color: transparent; }
 .opt.ok svg { opacity: 1; color: var(--good); }
 .opt.no { border-color: var(--bad); background: color-mix(in oklab, var(--bad) 9%, var(--surface-2)); }
-.opt.no i { background: var(--bad); color: #fff; border-color: transparent; }
+.opt.no i { background: var(--bad); color: var(--ink-on-accent); border-color: transparent; }
 .opt:disabled { cursor: default; }
 .opt:disabled:not(.ok):not(.no) { opacity: .5; }
 .quiz__why { font-size: 15px; line-height: 1.55; color: var(--text-2); padding: 16px 18px; border-radius: 14px; border-left: 3px solid var(--accent); background: var(--surface-2); }
@@ -756,14 +793,14 @@ body:not([data-subject]) .eyebrow { color: var(--text-3); }
 .theme-vt::view-transition-group(nav) { animation: none; }
 
 /* ── Subject hero art ───────────────────────────────────────────────────── */
-.years { position: absolute; top: 0; bottom: 0; right: max(var(--gutter), calc((100vw - var(--wrap)) / 2)); width: min(48%, 600px); overflow: hidden; -webkit-mask-image: linear-gradient(180deg, transparent, #000 24%, #000 76%, transparent); mask-image: linear-gradient(180deg, transparent, #000 24%, #000 76%, transparent); }
+.years { position: absolute; left: var(--art-l); top: var(--art-t); width: var(--art-w); height: var(--art-h); overflow: hidden; -webkit-mask-image: linear-gradient(180deg, transparent, #000 24%, #000 76%, transparent); mask-image: linear-gradient(180deg, transparent, #000 24%, #000 76%, transparent); }
 .years ul { will-change: transform; }
 .years li { display: grid; grid-template-columns: 4.2ch 1fr; align-items: center; gap: 24px; padding: 4px 0; }
 .years b { font-family: var(--serif); font-weight: 400; font-size: clamp(52px, 7.4vw, 104px); line-height: 1; letter-spacing: -.02em; color: var(--text); font-variant-numeric: tabular-nums; transition: color .5s var(--ease); }
 .years span { font-size: 14.5px; color: var(--text-3); max-width: 28ch; line-height: 1.35; transition: color .5s var(--ease); }
 .years li.is-on b { color: var(--c); }
 .years li.is-on span { color: var(--text); }
-.econ-art { position: absolute; right: max(0px, calc((100vw - var(--wrap)) / 2 - 40px)); top: 46%; transform: translateY(-50%); width: min(60%, 820px); height: auto; overflow: visible; }
+.econ-art { position: absolute; left: var(--art-l); top: var(--art-t); width: var(--art-w); height: var(--art-h); overflow: visible; }
 .econ-art .g { stroke: var(--line); }
 .econ-art .ax { stroke: var(--text-3); stroke-width: 1.5; fill: none; }
 .econ-art .d, .econ-art .s { fill: none; stroke-width: 3.2; stroke-linecap: round; }
@@ -777,13 +814,12 @@ body:not([data-subject]) .eyebrow { color: var(--text-3); }
 .econ-art .tag-t { fill: var(--text); font: 600 13px var(--sans); font-variant-numeric: tabular-nums; }
 .geo-art { position: absolute; inset: 0; }
 @media (max-width: 760px) {
-  .years { right: auto; left: var(--gutter); width: calc(100% - 2 * var(--gutter)); opacity: .5; }
-  .econ-art { width: 118%; right: -12%; top: 34%; opacity: .55; }
+  .years { opacity: .6; }
+  .econ-art { opacity: .9; }
 }
 .parts__note { font-size: 13px; color: var(--text-3); margin-bottom: 2px; }
 .section-head .h2 { max-width: 16ch; }
 .door__glyph svg { width: 100%; height: 100%; }
-@media (max-width: 1100px) and (min-width: 761px) { .years { opacity: .42; } }
 
 /* ── History scroll chapters (cards under the History hero) ────────── */
 .chapters { padding-block: 56px 24px; }
@@ -794,7 +830,6 @@ body:not([data-subject]) .eyebrow { color: var(--text-3); }
   border: 1px solid color-mix(in oklab, var(--accent) 28%, transparent); box-shadow: inset 0 1px 0 rgb(255 255 255 / .06);
   transition: transform .6s var(--ease), border-color .3s; }
 .chapter-card:hover { transform: translateY(-4px); border-color: color-mix(in oklab, var(--accent) 60%, transparent); }
-[data-subject="history"] .chapter-card { --accent: var(--brand); --accent-deep: var(--brand-deep); } /* matches the violet History chapters */
 .chapter-card--paper { background: radial-gradient(120% 120% at 0% 100%, rgb(242 236 223 / .14), rgb(12 13 20 / .94) 60%), #0a0b10; }
 .chapter-card__tag { font: 500 var(--fs-label)/1.3 var(--mono); letter-spacing: .02em; text-transform: uppercase; color: rgb(255 255 255 / .74); }
 .chapter-card__title { font-family: var(--serif); font-size: clamp(2rem, 1.1rem + 2.6vw, 3.4rem); line-height: .9; text-transform: uppercase; }

@@ -34,7 +34,7 @@ ladder.innerHTML = RUNGS.map((r, i) => `<button class="card rung" style="--i:${i
 const COLORS = { History: 'hist', Economics: 'econ', Geography: 'geo' };
 const showRung = (i, animate = true) => {
   $$('.rung', ladder).forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
-  detail.innerHTML = RUNGS[i].ex.map(([s, t]) => `<div class="card" style="--accent:var(--${COLORS[s]})"><span class="tag">${s}</span><p class="serif" style="font-size:19px;line-height:1.35">${t}</p></div>`).join('');
+  detail.innerHTML = RUNGS[i].ex.map(([s, t]) => `<div class="card" style="--accent:var(--${COLORS[s]});--accent-deep:var(--${COLORS[s]}-deep)"><span class="tag">${s}</span><p class="serif" style="font-size:19px;line-height:1.35">${t}</p></div>`).join('');
   if (animate && !reduced) gsap.from(detail.children, { y: 18, opacity: 0, duration: 0.7, stagger: 0.07 });
 };
 $$('.rung', ladder).forEach(b => b.addEventListener('click', () => showRung(+b.dataset.i)));

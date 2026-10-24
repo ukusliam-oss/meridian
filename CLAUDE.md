@@ -28,15 +28,19 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   sub-nav scroll spy, `store` (localStorage, try/catch).
 - `assets/js/ui.js` — exam anatomy, Paper 2 topic finder, topic map, examples tracker, technique
   blocks, command words, flashcards, quiz.
-- `assets/js/data/*.js` — all content. `subject.js` renders a page from one of these.
+- `assets/js/data/*.js` — all content. `subject.js` renders a page from one of these as a path in four steps
+  (`STEPS`: know the exam, learn the content, answer questions, test yourself): step cards under the hero, section
+  labels "Step 0n · …", a sub-nav grouped by step, and a "Next · step" link after each step's last section.
 - `assets/js/practice.js` — written practice: one set of exam-style structured questions at a time,
   a mark-scheme reveal per part, a Level 2 and a stronger example answer side by side for the long
   part, data tables, a year-scaled line chart and a labelled S&D diagram. It injects
   `assets/css/practice.css` itself. Content: `assets/js/data/practice-{history,economics,geography}.js`
-  (8, 7 and 6 sets). `subject.js` mounts it after Exam technique as "Practice" in the sub-nav.
+  (8, 7 and 6 sets). `subject.js` mounts it in step 3, after Exam technique and Command words.
   Nothing is typed or saved.
 - `assets/js/labs/` — `timeline.js` (History), `supply-demand.js` (Economics), `dtm.js` (Geography).
-- `assets/js/visuals.js` — subject hero art: year ribbon, live S&D, canvas contour map.
+- `assets/js/visuals.js` — subject hero art: year ribbon, live S&D, canvas contour map. History's years and the S&D
+  diagram never sit behind the title: `heroArt` measures the box beside the title word and the box above the title
+  block on every resize and puts the art in whichever lets it draw larger (`--art-l/t/w/h` on `.s-hero`).
 - `src/globe.js` → `assets/js/globe.js` — the home globe (three 0.186, custom shaders), driven by
   `setProgress(f)`: 0 hero, 1 History, 2 Economics, 3 Geography.
 
@@ -44,8 +48,8 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - `history/kq6.html` — KQ6 chapter: 33 scenes over one globe. `assets/js/chapter.js` renders the scenes from
   `assets/js/data/history/kq6.js` and turns scroll into globe progress (a scene holds while its panel is on the reading
   line; the camera flies in the gaps). `assets/css/chapter.css` adds the globe layer, scene panels, pill navigator and
-  scene menu on top of site.css's type system (`--acc` = `--accent`; History chapters and their hub cards are violet
-  `--brand`, the History hub itself amber). The pill ends in their progress ring (a 10% lilac disc, a
+  scene menu on top of site.css's type system (`--acc` = `--accent`). History is violet everywhere (`--hist` = `--brand`),
+  Economics green, Geography blue. The pill ends in their progress ring (a 10% lilac disc, a
   faint track, a white bar filling from the top as the chapter is read, an arrow icon in the middle).
 - `history/kq6-paper2.html` + `assets/js/paper2.js` — Paper 2 room from `kq6-paper2.js` (sources on paper cards).
   The History hub links both through `CHAPTERS` in `tools/pages.py`.
@@ -100,6 +104,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   (worst 16 ms) and skipped 73 unchanged frames. The preview pane throttles rAF, so fps itself was not measured.
 - Vendored: GSAP 3.15 (+ScrollTrigger, SplitText, Flip, DrawSVG, CustomEase), Lenis 1.3.27,
   Inter (48 KB) and Instrument Serif (2 × 21 KB).
+- Contrast (2026-10-24, `tools/contrast.js`, folded content opened): home and the three hubs in both themes and the
+  three chapter pages pass WCAG AA; KQ6 checked 1,105 text elements, the Economics chapter 1,158. Light theme tokens
+  were darkened for it (`--econ` #087a50, `--good`/`--bad`, `--text-2` .76).
 - Checked in the preview on 2026-10-22: home lenses, all three labs and every mode, flashcards,
   quiz, light theme, 375 px phone layout (no horizontal scroll). No console errors.
 - Where practice marks come from (checked 2026-10-22; each data file's `source` shows it on the
@@ -137,7 +144,11 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 ## Not done
 - Deployed 2026-10-22 with GitHub Pages from `main` (root): https://ukusliam-oss.github.io/meridian/
   The repo is public. Every push to `main` redeploys the live site.
-- No automated browser tests; the data checks are `tools/check-econ.mjs` and `tools/check-lab.mjs`.
+- No automated browser tests; the data checks are `tools/check-econ.mjs` and `tools/check-lab.mjs`. For colour
+  contrast, run `tools/contrast.js` in the preview (`const T = await import('/tools/contrast.js'); T.unfold(); T.audit()`):
+  it lists text under WCAG AA. Load the theme fresh (localStorage `meridian:theme`) and turn transitions off first: a
+  hidden preview pane never runs colour transitions, so switching theme in place gives false failures. Glass bars are
+  measured against the page colour, not what is behind them.
 - Economics: the chapter and the lab are drafts, not yet reviewed by an Economics teacher. The Section A data room
   (`economics/data-room.html`) from the plan is not built. Nothing of the Economics chapter is deployed yet.
 - History chapters: only KQ6 exists (status draft, not yet teacher-reviewed). West Staaken is drawn inside the British

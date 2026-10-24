@@ -140,4 +140,24 @@ function geography(el) {
 
 export function heroArt(el, id, data) {
   ({ history, economics, geography })[id]?.(el, data);
+  // History's years and the Economics diagram never sit behind the title. Two boxes are measured whenever the hero
+  // changes size: beside the title word (above the lede row) and above the whole title block. The art takes the box
+  // in which it can be drawn larger, so wide screens put it next to the title and phones put it above.
+  const hero = el.closest('.s-hero'), block = hero && hero.querySelector('.wrap');
+  if (!block || id === 'geography') return;
+  const [aw, ah] = id === 'economics' ? [640, 520] : [5, 6];
+  const word = hero.querySelector('.s-hero__code') || hero.querySelector('.s-hero__title'), row = hero.querySelector('.s-hero__row');
+  const fit = () => {
+    const box = n => n.getBoundingClientRect(), H = box(hero), W = box(block), T = box(word), R = box(row);
+    const top = (parseFloat(getComputedStyle(hero).getPropertyValue('--nav-h')) || 64) + 16, right = W.right - H.left;
+    const pick = [
+      { l: T.right - H.left + 40, t: top, b: R.top - H.top - 32 },
+      { l: W.left - H.left, t: top, b: W.top - H.top - 24 },
+    ].map(c => ({ ...c, w: Math.min(right - c.l, 820), h: c.b - c.t })).map(c => ({ ...c, s: Math.min(c.w / aw, c.h / ah) }))
+      .reduce((a, c) => (c.s > a.s ? c : a));
+    const px = v => `${Math.max(0, Math.round(v))}px`;
+    hero.style.setProperty('--art-l', px(right - pick.w)); hero.style.setProperty('--art-t', px(pick.t));
+    hero.style.setProperty('--art-w', px(pick.w)); hero.style.setProperty('--art-h', px(pick.h));
+  };
+  new ResizeObserver(fit).observe(hero); fit();
 }

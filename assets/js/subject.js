@@ -11,22 +11,39 @@ const NEXT = { history: ['economics', 'Economics', 'econ', '0455'], economics: [
 const head = (eyebrow, h, lede) => `<header class="section-head section-head--split">
   <div style="display:grid;gap:20px"><p class="eyebrow">${eyebrow}</p><h2 class="h2" data-split>${h}</h2></div>
   <p class="lede" data-reveal>${lede}</p></header>`;
-const section = (sid, eyebrow, h, lede, cls = '') => `<section class="section ${cls}" id="${sid}"><div class="wrap">${head(eyebrow, h, lede)}<div data-mount="${sid}"></div></div></section>`;
 
-const links = [['exam', 'Assessment'], ['topics', 'Content'], ...(d.examples ? [['examples', 'Examples']] : []), ['lab', d.lab.nav || 'Interactive'], ['technique', 'Exam technique'], ['practice', 'Practice'], ['words', 'Command words'], ['cards', 'Flashcards'], ['quiz', 'Quiz']];
+// The page is a path in four steps. Each section's label says which step it belongs to, the sub-nav groups its links
+// by step, and the last section of a step points on to the next one.
+const LAB = { timeline: 'an interactive timeline, 1919–1991', 'supply-demand': 'an interactive supply and demand diagram', dtm: 'an interactive demographic transition model' };
+const STEPS = [
+  { em: 'Know', rest: 'the exam', text: 'How the papers work, what each one is worth and how long you have.',
+    secs: [['exam', 'Assessment', 'Assessment overview', d.examHead, d.examLede]] },
+  { em: 'Learn', rest: 'the content', text: `Every topic in the syllabus${d.examples ? `, the ${d.examples.length} detailed examples` : ''} and ${LAB[d.lab.kind] || 'an interactive diagram'}.`,
+    secs: [['topics', 'Content', 'Subject content', d.topicsHead, d.topicsLede],
+      ...(d.examples ? [['examples', 'Examples', 'Detailed specific examples', d.examplesHead, d.examplesLede]] : []),
+      ['lab', d.lab.nav || 'Interactive', 'Interactive', d.lab.head, d.lab.lede]] },
+  { em: 'Answer', rest: 'questions', text: `What examiners reward, the ${d.words.length} command words and ${pr.sets.length} sets of exam-style questions with mark schemes.`,
+    secs: [['technique', 'Exam technique', 'How to answer questions', d.techHead, d.techLede],
+      ['words', 'Command words', 'Key skills', d.wordsHead, d.wordsLede],
+      ['practice', 'Practice', 'Written practice', pr.head, pr.lede]] },
+  { em: 'Test', rest: 'yourself', text: `${d.cards.length} flashcards for key terms and a quick quiz with an explanation for every answer.`,
+    secs: [['cards', 'Flashcards', 'Flashcards', '<em>Key</em>terms', `${d.cards.length} key terms. Try to recall the definition before you turn the card over. Swipe right if you know it and left if you are still learning it. Your progress is saved on this device.`],
+      ['quiz', 'Quiz', 'Practice questions', '<em>Quick</em>quiz', 'Ten multiple-choice questions on this subject. Each answer comes with an explanation. A new set of questions is chosen each time.']] },
+];
+const num = k => String(k + 1).padStart(2, '0');
+const nextLink = k => STEPS[k + 1] ? `<a class="path__next" href="#${STEPS[k + 1].secs[0][0]}" data-reveal><span class="mono">Next · step ${num(k + 1)}</span><b><em>${STEPS[k + 1].em}</em> ${STEPS[k + 1].rest}</b>${icons.arrow}</a>` : '';
+const section = ([sid, , eyebrow, h, lede], k, last) => `<section class="section" id="${sid}"><div class="wrap">${head(`Step ${num(k)} · ${eyebrow}`, h, lede)}<div data-mount="${sid}"></div>${last ? nextLink(k) : ''}</div></section>`;
 const [nid, nname, ncolor, ncode] = NEXT[id];
 
 $('#content').insertAdjacentHTML('beforeend', `
-  <nav class="subnav" aria-label="On this page"><div class="wrap"><div class="seg">${links.map(([h, l]) => `<a href="#${h}">${l}</a>`).join('')}</div></div></nav>
-  ${section('exam', 'Assessment overview', d.examHead, d.examLede)}
-  ${section('topics', 'Subject content', d.topicsHead, d.topicsLede)}
-  ${d.examples ? section('examples', 'Detailed specific examples', d.examplesHead, d.examplesLede) : ''}
-  ${section('lab', 'Interactive', d.lab.head, d.lab.lede)}
-  ${section('technique', 'How to answer questions', d.techHead, d.techLede)}
-  ${section('practice', 'Written practice', pr.head, pr.lede)}
-  ${section('words', 'Key skills', d.wordsHead, d.wordsLede)}
-  ${section('cards', 'Flashcards', '<em>Key</em>terms', `${d.cards.length} key terms. Try to recall the definition before you turn the card over. Swipe right if you know it and left if you are still learning it. Your progress is saved on this device.`)}
-  ${section('quiz', 'Practice questions', '<em>Quick</em>quiz', 'Ten multiple-choice questions on this subject. Each answer comes with an explanation. A new set of questions is chosen each time.')}
+  <section class="path"><div class="wrap">
+    <p class="eyebrow">Revise in four steps</p>
+    <ol class="path__steps">${STEPS.map((st, k) => `<li><a class="card path__step" href="#${st.secs[0][0]}" data-spot data-reveal>
+      <span class="path__n">${num(k)}</span><span class="path__t"><em>${st.em}</em> ${st.rest}</span>
+      <span class="path__d">${st.text}</span><span class="path__in mono">${st.secs.map(x => x[1]).join(' · ')}</span></a></li>`).join('')}</ol>
+  </div></section>
+  <nav class="subnav" aria-label="On this page"><div class="wrap"><div class="seg">${STEPS.map(st => st.secs.map(([h, l]) => `<a href="#${h}">${l}</a>`).join('')).join('<i class="seg__sep" aria-hidden="true"></i>')}</div></div></nav>
+  ${STEPS.map((st, k) => st.secs.map((sec, j) => section(sec, k, j === st.secs.length - 1)).join('')).join('')}
   <section class="section section--tight"><div class="wrap">
     <a class="card next" href="${nid}.html" data-spot data-reveal style="--accent:var(--${ncolor})">
       <div style="display:grid;gap:14px"><p class="eyebrow">Next subject: ${ncode}</p><h2 class="h1">${nname}</h2></div>
