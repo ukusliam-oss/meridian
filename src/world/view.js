@@ -31,7 +31,9 @@ export function placeCamera(camera, a, b, t, W, H) {
   const lift = 1 + Math.min(2.2, travelKm / Math.max(a.alt, b.alt, 400) * 0.35) * Math.sin(Math.PI * t);
   const alt = Math.exp(Math.log(a.alt) * (1 - t) + Math.log(b.alt) * t) * lift * (W / H < 0.8 ? 1.7 : 1); // tall phones see less width
   const d = 1 + alt / R_KM;
-  const tilt = (alt < 2500 ? 24 * (1 - alt / 2500) : 0) * DEG;
+  // a scene camera may set its own tilt (degrees), e.g. a city seen at a lower angle; otherwise it follows the altitude
+  const auto = alt < 2500 ? 24 * (1 - alt / 2500) : 0;
+  const tilt = ((a.tilt ?? auto) * (1 - t) + (b.tilt ?? auto) * t) * DEG;
   const south = new Vector3().crossVectors(dir, new Vector3().crossVectors(UP, dir)).normalize().negate();
   camera.position.copy(dir).multiplyScalar(d).addScaledVector(south, Math.tan(tilt) * (d - 1) * 1.2);
   camera.up.copy(UP);

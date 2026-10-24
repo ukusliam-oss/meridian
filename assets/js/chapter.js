@@ -15,6 +15,10 @@ const CFG = {
   heroDate: data.heroDate || '1948-01-01',
   pill: data.pill || { part: 'Key question 6', date: 'Eastern Europe, 1948–<span class="lc">c.</span>1989' },
   relief: data.relief || { world: '../assets/data/relief-world.jpg', europe: '../assets/data/relief-europe.jpg', europeBox: [-15, 30, 65, 75] },
+  // shaded terrain tiles for close and middle views (tools/build-terrain.mjs); a chapter can switch them off
+  terrain: data.terrain === false ? null : '../assets/data/terrain/index.json',
+  // aerial photographs for city scenes (tools/build-berlin-photo.mjs); History chapters use the 1953 Berlin mosaic
+  photo: data.photo ?? (data.borders === 'modern' ? null : '../assets/data/berlin1953/index.json'),
   accent: data.accent || null,
 };
 
@@ -466,7 +470,7 @@ async function start() {
     const [{ createWorld }, borders] = await Promise.all([import('./world.js'), loadBorders()]);
     buildEngineScenes();
     setPct(0.96);
-    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief });
+    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain, photo: CFG.photo });
     window.__meridianWorld = world; // stats for checks in the preview
     if (!world) root.classList.add('no-webgl');
   } catch (err) {

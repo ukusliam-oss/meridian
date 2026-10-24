@@ -12,7 +12,7 @@
 import {
   WebGLRenderer, Scene, PerspectiveCamera, Group, Mesh, SphereGeometry, ShaderMaterial, CanvasTexture, DataTexture, Texture,
   TextureLoader, Vector2, Vector3, Vector4, Color, BufferGeometry, Float32BufferAttribute, LineSegments, LineBasicMaterial,
-  TubeGeometry, CatmullRomCurve3, ConeGeometry, MeshBasicMaterial, BackSide, AdditiveBlending, SRGBColorSpace,
+  TubeGeometry, CatmullRomCurve3, ConeGeometry, MeshBasicMaterial, BackSide, DoubleSide, AdditiveBlending, SRGBColorSpace,
   LinearFilter, LinearMipmapLinearFilter, NearestFilter, RGFormat, FloatType, Quaternion, Points, InstancedMesh, CylinderGeometry, Matrix4, DynamicDrawUsage,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -82,15 +82,25 @@ const shellVert = /* glsl */`
     vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz;
     gl_Position = projectionMatrix * viewMatrix * w;
   }`;
+// Compiled in one of two forms, to stay within 16 texture units: HAS_DATA (data maps: id, value and ramp textures) or
+// HAS_PHOTO (aerial photographs: far and near layers and a coverage mask). No chapter needs both.
 const earthFrag = /* glsl */`
-  uniform sampler2D uGA, uDA, uGB, uDB, uRelW, uRelE; uniform vec4 uBoxA, uBoxB, uRelBox;
+  uniform sampler2D uGA, uDA, uGB, uDB, uRelW, uRelE, uTA, uTB;
+  uniform vec4 uBoxA, uBoxB, uRelBox;
+#ifdef HAS_PHOTO
+  uniform sampler2D uPA, uPB, uQA, uQB, uPMask;
+  uniform vec4 uPBoxA, uPBoxB, uQBoxA, uQBoxB, uPMaskBox;
+#endif
+#ifdef HAS_DATA
   uniform sampler2D uIGA, uIDA, uIGB, uIDB, uVal, uRamp;
+#endif
   uniform vec4 uSlotA, uSlotB;      // x: value row (< 0: no data layer), y: d0, z: d1, w: ramp row
   uniform float uWA, uWB;           // inside each state, how far its values have moved towards the other state's row
   uniform float uMix, uHatch; uniform vec3 uLight, uOcean, uOceanLift, uRim, uFocus;
   varying vec3 vN; varying vec3 vW; varying vec2 vUv;
   vec2 lonlat() { return vec2(vUv.x * 360.0 - 180.0, vUv.y * 180.0 - 90.0); }
   vec3 lin(vec3 c) { return pow(c, vec3(2.2)); }
+#ifdef HAS_DATA
   float idAt(sampler2D t, ivec2 p) { vec4 c = texelFetch(t, p, 0); return floor(c.r * 255.0 + 0.5) + 256.0 * floor(c.g * 255.0 + 0.5); }
   vec2 valAt(float row, float id) { return texelFetch(uVal, ivec2(int(id) - 1, int(row)), 0).rg; }
   vec3 rampAt(float v, vec4 slot) {
@@ -122,13 +132,8 @@ const earthFrag = /* glsl */`
     }
     return cover > 0.0 ? acc / cover : vec4(0.0);
   }
-  // a state = a world texture plus a sharp detail texture over a lon/lat box around the scene, and its data layer
-  vec4 state(sampler2D g, sampler2D d, sampler2D ig, sampler2D id, vec4 box, vec4 own, vec4 other, float w, out float focus) {
-    vec4 col = texture2D(g, vUv);
-    vec2 q = (lonlat() - box.xy) / (box.zw - box.xy);
-    float e = min(min(q.x, 1.0 - q.x), min(q.y, 1.0 - q.y));
-    float inD = e > 0.0 ? smoothstep(0.0, 0.05, e) : 0.0;
-    if (inD > 0.0) col = mix(col, texture2D(d, q), inD);
+  // a state's data layer over its painted colour
+  vec4 withData(vec4 col, sampler2D ig, sampler2D id, vec2 q, float inD, vec4 own, vec4 other, float w, out float focus) {
     focus = 0.0;
     if (own.x < 0.0) return col;
     float cg, cd = 0.0;
@@ -137,6 +142,16 @@ const earthFrag = /* glsl */`
     float cover = mix(cg, cd, inD); vec4 dat = mix(dg, dd, inD);
     focus = dat.a * cover;
     return vec4(mix(col.rgb, dat.rgb, cover), max(col.a, cover));
+  }
+#endif
+  // a state = a world texture plus a sharp detail texture over a lon/lat box around the scene
+  vec4 state(sampler2D g, sampler2D d, vec4 box, out vec2 q, out float inD) {
+    vec4 col = texture2D(g, vUv);
+    q = (lonlat() - box.xy) / (box.zw - box.xy);
+    float e = min(min(q.x, 1.0 - q.x), min(q.y, 1.0 - q.y));
+    inD = e > 0.0 ? smoothstep(0.0, 0.05, e) : 0.0;
+    if (inD > 0.0) col = mix(col, texture2D(d, q), inD);
+    return col;
   }
   // screen pixels across one texel of a texture sampled at uv (large when the camera is much closer than it was made for)
   float spread(vec2 uv, vec2 size) { vec2 t = uv * size; return 1.0 / max(1e-6, max(length(dFdx(t)), length(dFdy(t)))); }
@@ -152,20 +167,72 @@ const earthFrag = /* glsl */`
     float px = e > 0.0 ? spread(q, vec2(textureSize(uRelE, 0))) : spread(vUv, vec2(textureSize(uRelW, 0)));
     return mix(r, avg, smoothstep(1.5, 4.0, px));
   }
+  // the state's own shaded terrain (Copernicus DEM tiles) where it has some, else the base relief. Like the base relief it
+  // fades out where one of its texels would cover more than a few screen pixels, and towards the edges of its box
+  float terrain(sampler2D t, vec4 box, float base) {
+    vec2 q = (lonlat() - box.xy) / (box.zw - box.xy);
+    float e = min(min(q.x, 1.0 - q.x), min(q.y, 1.0 - q.y));
+    if (e <= 0.0) return base;
+    vec4 c = texture2D(t, q);
+    float r = mix(c.r, 0.75, smoothstep(2.0, 5.0, spread(q, vec2(textureSize(t, 0)))));
+    return mix(base, r, c.a * smoothstep(0.0, 0.03, e));
+  }
+#ifdef HAS_PHOTO
+  // one layer of an aerial photograph over its box, as (grey × coverage, coverage) so layers blend by coverage
+  vec2 photoLayer(sampler2D t, vec4 box) {
+    vec2 q = (lonlat() - box.xy) / (box.zw - box.xy);
+    float e = min(min(q.x, 1.0 - q.x), min(q.y, 1.0 - q.y));
+    if (e <= 0.0) return vec2(0.0);
+    vec4 c = texture2D(t, q);
+    float a = c.a * smoothstep(0.0, 0.01, e);
+    return vec2(c.r * a, a);
+  }
+  // near layer over far layer, inside the photographs' soft coverage mask (the frames' differing exposures are evened
+  // out in the tiles themselves, see tools/build-berlin-photo.mjs)
+  vec2 photo(sampler2D far, vec4 fbox, sampler2D near, vec4 nbox) {
+    vec2 f = photoLayer(far, fbox), n = photoLayer(near, nbox);
+    vec2 r = n + f * (1.0 - n.y);
+    vec2 mq = (lonlat() - uPMaskBox.xy) / (uPMaskBox.zw - uPMaskBox.xy);
+    float inside = step(0.0, mq.x) * step(mq.x, 1.0) * step(0.0, mq.y) * step(mq.y, 1.0);
+    float g = r.y > 0.0 ? r.x / r.y : 0.0;
+    g = clamp(0.5 + (g - 0.45) * 1.05, 0.0, 1.0);
+    float a = r.y * smoothstep(0.35, 0.85, texture2D(uPMask, mq).r) * inside;
+    return vec2(g * a, a);
+  }
+#endif
   void main() {
-    float fa, fb;
-    vec4 a = state(uGA, uDA, uIGA, uIDA, uBoxA, uSlotA, uSlotB, uWA, fa);
-    vec4 b = uMix > 0.0 ? state(uGB, uDB, uIGB, uIDB, uBoxB, uSlotB, uSlotA, uWB, fb) : a;
+    float fa = 0.0, fb = 0.0, ia, ib; vec2 qa, qb;
+    vec4 a = state(uGA, uDA, uBoxA, qa, ia);
+    vec4 b = uMix > 0.0 ? state(uGB, uDB, uBoxB, qb, ib) : a;
+#ifdef HAS_DATA
+    a = withData(a, uIGA, uIDA, qa, ia, uSlotA, uSlotB, uWA, fa);
+    if (uMix > 0.0) b = withData(b, uIGB, uIDB, qb, ib, uSlotB, uSlotA, uWB, fb); else b = a;
+#endif
     if (uMix <= 0.0) fb = fa;
     vec4 land = mix(a, b, uMix);
     float focus = mix(fa, fb, uMix);
     vec3 n = normalize(vN), v = normalize(cameraPosition - vW);
     float lit = 0.42 + 0.58 * smoothstep(-0.35, 0.9, dot(n, normalize(uLight)));
-    float shade = clamp(0.2 + 0.93 * relief(), 0.48, 1.24);
+    float base = relief();
+    float rel = mix(terrain(uTA, uBoxA, base), terrain(uTB, uBoxB, base), uMix);
+    float shade = clamp(0.2 + 0.93 * rel, 0.48, 1.24);
     float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
     vec3 ocean = mix(uOcean, uOceanLift, 0.5 + 0.5 * n.y) * (0.75 + 0.25 * lit);
     vec3 lc = land.rgb * (1.0 + 0.28 * focus) + uFocus * 0.06 * focus;
-    vec3 col = mix(ocean, lc * lit * shade, land.a);
+    // land (alpha 255) takes the terrain shading; painted water (shelf, lakes, rivers: alpha 254) is lit by the globe only
+    float water = step(0.5, land.a) * (1.0 - smoothstep(0.9965, 0.999, land.a));
+    vec3 col = mix(ocean, mix(lc * lit * shade, land.rgb * (0.8 + 0.2 * lit), water), clamp(land.a / 0.996, 0.0, 1.0));
+    // the city from the air: the photograph in ink-to-paper tones, tinted by the painted colour of the sector or state
+    // underneath (its hue, not its darkness), so the map's meaning stays and the city shows through
+#ifdef HAS_PHOTO
+    vec2 pa = photo(uPA, uPBoxA, uQA, uQBoxA), pb = photo(uPB, uPBoxB, uQB, uQBoxB);
+    vec2 ph = mix(pa, pb, uMix);
+    if (ph.y > 0.001) {
+      vec3 duo = mix(vec3(0.012, 0.013, 0.022), vec3(0.94, 0.89, 0.79), clamp(ph.x / ph.y, 0.0, 1.0));
+      vec3 hue = land.rgb / max(1e-3, max(land.r, max(land.g, land.b)));
+      col = mix(col, duo * mix(vec3(1.0), hue, 0.35) * (0.85 + 0.15 * lit), ph.y);
+    }
+#endif
     // a fine film grain on land, one device pixel per grain, so large fills read as a surface and not as plastic
     float grain = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
     col *= 1.0 + (grain - 0.5) * 0.05 * land.a;
@@ -251,19 +318,43 @@ function arrowMesh(a, b, color, alt) {
 }
 
 // The real 1989 Wall: one merged tube mesh per kind (front wall bright, rear wall dim).
-function wallMesh(features, kind, radius, dash) {
-  const geos = [];
+// The Wall standing on the photograph: a vertical ribbon along the real 1989 route, dark at the foot and light at the
+// top, `height` km tall (exaggerated: the real wall was 3.6 m). u runs along each line, so it draws itself in like the
+// other lines, and the 1989 scenes break it into pieces.
+const ribbonVert = /* glsl */`
+  varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const ribbonFrag = /* glsl */`
+  uniform vec3 uColor; uniform float uDraw, uOpacity, uDash, uTime; varying vec2 vUv;
+  void main() {
+    if (vUv.x > uDraw) discard;
+    if (uDash > 0.0 && fract(vUv.x * uDash - uTime * 0.15) < 0.38) discard;
+    float h = vUv.y;
+    vec3 c = uColor * (0.45 + 0.55 * h) + vec3(0.35) * smoothstep(0.82, 1.0, h);
+    gl_FragColor = vec4(c, uOpacity * (0.7 + 0.3 * h));
+  }`;
+function wallMesh(features, kind, height, dash) {
+  const pos = [], uv = [], idx = [];
   for (const f of features) {
     if (f.properties.kind !== kind || !f.geometry) continue;
     const parts = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.type === 'MultiLineString' ? f.geometry.coordinates : [];
     for (const line of parts) {
       if (line.length < 2) continue;
-      const pts = line.map(([lon, lat]) => ll(lat, lon, 1.000004));
-      geos.push(new TubeGeometry(new CatmullRomCurve3(pts, false, 'centripetal'), Math.max(4, pts.length * 2), radius, 4, false));
+      const d = [0]; for (let i = 1; i < line.length; i++) d.push(d[i - 1] + Math.hypot((line[i][0] - line[i - 1][0]) * 0.61, line[i][1] - line[i - 1][1]));
+      const total = d.at(-1) || 1, v0 = pos.length / 3;
+      line.forEach(([lon, lat], i) => {
+        const a = ll(lat, lon, 1.000002), b = ll(lat, lon, 1 + height / R_KM);
+        pos.push(a.x, a.y, a.z, b.x, b.y, b.z); uv.push(d[i] / total, 0, d[i] / total, 1);
+        if (i) { const k = v0 + (i - 1) * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+      });
     }
   }
-  if (!geos.length) return null;
-  return new Mesh(mergeGeometries(geos), tubeMaterial(kind === 'front' ? LINE.wall : '#a99be0', dash));
+  if (!pos.length) return null;
+  const g = new BufferGeometry(); g.setAttribute('position', new Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+  const mat = new ShaderMaterial({
+    uniforms: { uColor: { value: new Color(kind === 'front' ? LINE.wall : '#a99be0') }, uDraw: { value: 0 }, uOpacity: { value: 0 }, uDash: { value: dash }, uTime: { value: 0 } },
+    vertexShader: ribbonVert, fragmentShader: ribbonFrag, transparent: true, depthWrite: false, side: DoubleSide,
+  });
+  const m = new Mesh(g, mat); m.frustumCulled = false; return m;
 }
 
 // ── painting: worker when possible, idle time on the main thread otherwise ────────────────────────────
@@ -326,7 +417,7 @@ function painter(feats, dataUrl, onDone) {
 
 // ── engine ──────────────────────────────────────────────────────────────────
 // scenes: engine scenes; a chapter panel that steps through several years has one per year, all with the same `panel`.
-export async function createWorld(host, { scenes, hero, data, dataUrl, relief, values = null, accent = null, reduced = false, onFrame } = {}) {
+export async function createWorld(host, { scenes, hero, data, dataUrl, relief, terrain = null, photo = null, values = null, accent = null, reduced = false, onFrame } = {}) {
   if (accent) PALETTE.focus = accent;
   const canvas = document.createElement('canvas');
   canvas.className = 'world__canvas';
@@ -425,19 +516,19 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
     const fp = footprint(s.camera, REF[0], REF[1]);
     // the whole globe in view: a hemisphere around the target is enough, at the screen's own density
     const box = fp.box || [lon - 75, Math.max(-89.5, lat - 60), lon + 75, Math.min(89.5, lat + 60)];
-    const size = textureSize(box, Math.max(0.01, (fp.kmPerPx || 40) * TEXEL), MAXT, MAXPX);
+    const size = textureSize(box, Math.max(0.003, (fp.kmPerPx || 40) * TEXEL), MAXT, MAXPX);
     stats.boxes[i] = { box: box.map(v => +v.toFixed(2)), size: `${size.W}x${size.H}`, texelKm: +size.texelKm.toFixed(3), kmPerPx: +fp.kmPerPx.toFixed(3) };
     const r = v => +v.toFixed(3);
     const bk = `${box.map(r).join(',')}|${size.W}x${size.H}`, mk = JSON.stringify({ ...map, city: null });
     const jobs = {
       g: { kind: 'paint', key: `g|${mk}`, map: { ...map, city: null }, box: [-180, -90, 180, 90], W: GW, H: GW / 2 },
-      d: { kind: 'paint', key: `d|${JSON.stringify(map)}|${bk}`, map, box, W: size.W, H: size.H },
+      d: { kind: 'paint', key: `d|${JSON.stringify(map)}|${bk}`, map, box, W: size.W, H: size.H, css: size.texelKm / Math.max(1e-6, fp.kmPerPx || size.texelKm) },
     };
     if (data) {
       jobs.ig = { kind: 'ids', key: `ig|${map.borders}`, date: map.borders, box: [-180, -90, 180, 90], W: GW, H: GW / 2 };
       jobs.id = { kind: 'ids', key: `id|${map.borders}|${bk}`, date: map.borders, box, W: size.W, H: size.H };
     }
-    return { jobs, box: new Vector4(...box) };
+    return { jobs, box: new Vector4(...box), kmPerPx: fp.kmPerPx };
   };
   const stateCache = new Map();
   const stateOf = i => { if (!stateCache.has(i)) stateCache.set(i, jobsFor(i)); return stateCache.get(i); };
@@ -453,6 +544,110 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
   }
   const blank = new DataTexture(new Uint8Array(4), 1, 1); blank.needsUpdate = true;
 
+  // ── terrain: shaded DEM tiles (tools/build-terrain.mjs) composed into one texture per state, over its detail box ──
+  // A state never waits for its terrain: it shows the base relief until the tiles are in, then the frame redraws.
+  // Level: ~215 m where a screen pixel is under 0.45 km at the target, ~430 m for the middle views, none from far away.
+  const tiledIndex = async url => {
+    const j = url ? await fetch(url).then(r => (r.ok ? r.json() : null)).catch(() => null) : null;
+    return j ? { ...j, base: new URL('.', new URL(url, location.href)), levels: j.levels.map(L => ({ ...L, has: new Set(L.tiles) })) } : null;
+  };
+  const [tIndex, pIndex] = await Promise.all([tiledIndex(terrain), tiledIndex(photo)]);
+  const tLevels = tIndex ? tIndex.levels : [];
+  const tLoading = new Set();
+  // draw the tiles of some levels (coarse first, finer on top) over a lon/lat box into a W × H canvas, north up;
+  // tiles are equirectangular, `deg` degrees a side, named by x = floor((lon + 180) / deg), y = floor((lat + 90) / deg)
+  async function composeTiles(base, levels, [w, so, e, n], W, H) {
+    const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high'; // a tile drawn smaller is averaged, not sampled, so it matches the level below
+    let any = false;
+    const ppd = W / (e - w);
+    for (const L of levels) {
+      if (L !== levels[0] && L.ppd > ppd * 3) continue; // much finer than the canvas: only aliasing and downloads
+      const jobs = [];
+      for (let x = Math.floor((w + 180) / L.deg); x <= Math.floor((e + 180) / L.deg); x++)
+        for (let y = Math.floor((so + 90) / L.deg); y <= Math.floor((n + 90) / L.deg); y++) if (L.has.has(`${x}_${y}`)) jobs.push([x, y]);
+      const imgs = await Promise.all(jobs.map(([x, y]) => fetch(new URL(`${L.z}/${x}_${y}.jpg`, base)).then(r => r.blob()).then(b => createImageBitmap(b)).catch(() => null)));
+      jobs.forEach(([x, y], j) => {
+        const img = imgs[j]; if (!img) return;
+        const lon0 = x * L.deg - 180, lat1 = (y + 1) * L.deg - 90; // row 0 of a tile is its north edge, as on the canvas
+        // whole-pixel edges, so neighbouring tiles meet without a hairline gap
+        const x0 = Math.floor((lon0 - w) / (e - w) * W), x1 = Math.ceil((lon0 + L.deg - w) / (e - w) * W);
+        const y0 = Math.floor((n - lat1) / (n - so) * H), y1 = Math.ceil((n - lat1 + L.deg) / (n - so) * H);
+        ctx.drawImage(img, x0, y0, x1 - x0, y1 - y0);
+        img.close(); any = true;
+      });
+    }
+    return any ? canvas : null;
+  }
+  const tileTexture = (canvas, key, W, H) => {
+    const t = new CanvasTexture(canvas); t.minFilter = LinearMipmapLinearFilter; t.anisotropy = aniso; // flipY on: north up
+    texCache.set(key, { tex: t, used: performance.now(), bytes: W * H * 4 * 4 / 3 });
+    evict(); dirty = true;
+  };
+  function terrainOf(i) {
+    if (!tLevels.length) return null;
+    const s = sceneOf(i), st = stateOf(i);
+    if (s.camera.alt > 2500) return null;
+    const fine = st.kmPerPx && st.kmPerPx < 0.45;
+    // coarse first, fine on top; composeTiles leaves out a level much finer than the canvas (z1 on a continent-wide box)
+    const levels = tLevels.filter(L => L.z <= 1 || (fine && L.z === 2)).sort((a, b) => a.ppd - b.ppd);
+    const top = levels.at(-1), [w, so, e, n] = st.box.toArray();
+    const k = Math.min(1, 2048 / ((e - w) * top.ppd), 2048 / ((n - so) * top.ppd));
+    const W = Math.max(64, Math.round((e - w) * top.ppd * k)), H = Math.max(64, Math.round((n - so) * top.ppd * k));
+    const key = `t|${st.box.toArray().map(v => v.toFixed(3)).join(',')}|${top.z}|${W}x${H}`;
+    const c = texCache.get(key);
+    if (c) { c.used = performance.now(); return c.tex; }
+    if (tLoading.has(key)) return null;
+    tLoading.add(key);
+    composeTiles(tIndex.base, levels, [w, so, e, n], W, H).then(canvas => { tLoading.delete(key); if (canvas) tileTexture(canvas, key, W, H); });
+    return null;
+  }
+
+  // ── photo: an aerial mosaic (the 1953 Berlin photographs, tools/build-berlin-photo.mjs) for city-scale states ──
+  // Two layers per state: `far` covers everything the camera shows (the detail box, where the photographs reach) at a
+  // level fit for the far side of a tilted view; `near` covers about the screen's width around the target at the level
+  // whose pixels are ~0.8 screen pixels there. Each is { tex, box } or null while its tiles load.
+  const pLoading = new Set(), pBoxes = new Map();
+  const pCover = pIndex && (pIndex.mask?.city || (() => { const L = pIndex.levels[0], xy = L.tiles.map(k => k.split('_').map(Number));
+    return [Math.min(...xy.map(v => v[0])) * L.deg - 180, Math.min(...xy.map(v => v[1])) * L.deg - 90, (Math.max(...xy.map(v => v[0])) + 1) * L.deg - 180, (Math.max(...xy.map(v => v[1])) + 1) * L.deg - 90]; })());
+  function photoLayer(box, metres) {
+    box = [Math.max(box[0], pCover[0]), Math.max(box[1], pCover[1]), Math.min(box[2], pCover[2]), Math.min(box[3], pCover[3])];
+    if (box[2] <= box[0] || box[3] <= box[1]) return null;
+    const ordered = pIndex.levels.slice().sort((a, b) => a.ppd - b.ppd);
+    const top = ordered.find(L => 111000 / L.ppd <= metres) || ordered.at(-1);
+    const levels = ordered.filter(L => L.ppd <= top.ppd);
+    const k = Math.min(1, MAXT / ((box[2] - box[0]) * top.ppd), MAXT / ((box[3] - box[1]) * top.ppd));
+    const W = Math.max(64, Math.round((box[2] - box[0]) * top.ppd * k)), H = Math.max(64, Math.round((box[3] - box[1]) * top.ppd * k));
+    const key = `p|${box.map(v => v.toFixed(4)).join(',')}|${top.z}|${W}x${H}`;
+    if (!pBoxes.has(key)) pBoxes.set(key, new Vector4(...box));
+    const c = texCache.get(key);
+    if (c) { c.used = performance.now(); return { tex: c.tex, box: pBoxes.get(key) }; }
+    if (!pLoading.has(key)) { pLoading.add(key); composeTiles(pIndex.base, levels, box, W, H).then(cv => { pLoading.delete(key); if (cv) tileTexture(cv, key, W, H); }); }
+    return null;
+  }
+  const clipBox = (a, b) => [Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.min(a[2], b[2]), Math.min(a[3], b[3])];
+  function photoOf(i) {
+    if (!pIndex) return null;
+    const s = sceneOf(i); if (!s || !s.map.city) return null;
+    const st = stateOf(i), km = st.kmPerPx || 0.05;
+    const half = km * Math.max(...REF) * 0.65, dLat = half / 110.57, dLon = half / (111.32 * Math.cos(s.camera.lat * DEG));
+    return {
+      far: photoLayer(st.box.toArray(), km * 1000 * 2.5),
+      // a tilted camera looks far to the north: the sharp layer reaches that far too (within the detail box), so the coarse
+      // layer only shows where the ground is already small on screen
+      near: photoLayer(clipBox([s.camera.lon - dLon * (s.camera.tilt ? 2.2 : 1.6), s.camera.lat - dLat * 0.8, s.camera.lon + dLon * (s.camera.tilt ? 2.2 : 1.6), s.camera.lat + dLat * (s.camera.tilt ? 3.2 : 1.4)], st.box.toArray()), km * 1000 * 0.8),
+    };
+  }
+  const pMask = { value: blank }, pMaskBox = { value: new Vector4(0, 0, 1, 1) };
+  if (pIndex && pIndex.mask) {
+    new TextureLoader().load(new URL(pIndex.mask.file, pIndex.base).href, t => { t.minFilter = LinearFilter; pMask.value = t; pMaskBox.value = new Vector4(...pIndex.mask.box); dirty = true; });
+  }
+  // the photographs' date and source, on screen whenever they are
+  const photoNote = document.createElement('p'); photoNote.className = 'world__photo mono';
+  photoNote.textContent = pIndex ? `Aerial photograph, ${pIndex.date === '1953-06' ? 'June 1953' : pIndex.date} · Senate of Berlin` : '';
+  host.appendChild(photoNote);
+
   // relief: Natural Earth shaded relief, a world image plus a sharper one over Europe
   const flat = new DataTexture(new Uint8Array([219, 219, 219, 255]), 1, 1); flat.needsUpdate = true;
   const light = new Vector3(-0.6, 0.55, 0.9);
@@ -463,7 +658,10 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
     uVal: { value: valTex }, uRamp: { value: rampTex },
     uSlotA: { value: new Vector4(-1, 0, 1, 0) }, uSlotB: { value: new Vector4(-1, 0, 1, 0) }, uWA: { value: 0 }, uWB: { value: 1 },
     uBoxA: { value: new Vector4() }, uBoxB: { value: new Vector4() },
-    uRelW: { value: flat }, uRelE: { value: flat }, uRelBox: { value: new Vector4(...(relief?.europeBox || [0, 0, 1, 1])) },
+    uRelW: { value: flat }, uRelE: { value: flat }, uTA: { value: blank }, uTB: { value: blank },
+    uPA: { value: blank }, uPB: { value: blank }, uPBoxA: { value: new Vector4() }, uPBoxB: { value: new Vector4() },
+    uQA: { value: blank }, uQB: { value: blank }, uQBoxA: { value: new Vector4() }, uQBoxB: { value: new Vector4() },
+    uPMask: { value: blank }, uPMaskBox: { value: new Vector4(0, 0, 1, 1) }, uRelBox: { value: new Vector4(...(relief?.europeBox || [0, 0, 1, 1])) },
     uMix: { value: 0 }, uHatch: { value: 60 }, uLight: { value: light },
     uOcean: { value: new Color('#06080d') }, uOceanLift: { value: new Color('#0c1220') }, uRim: { value: rim }, uFocus: { value: new Color(PALETTE.focus) },
   };
@@ -474,7 +672,9 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
     tl.load(relief.europe, t => { earthU.uRelE.value = relTex(t); dirty = true; });
   }
   // fine enough that the flat facets sag at most ~120 m (~1.2 km with the old 160 × 120), so city lines stay on their fills
-  const earth = new Mesh(phone ? new SphereGeometry(1, 384, 192) : new SphereGeometry(1, 512, 256), new ShaderMaterial({ uniforms: earthU, vertexShader: shellVert, fragmentShader: earthFrag }));
+  const earth = new Mesh(phone ? new SphereGeometry(1, 384, 192) : new SphereGeometry(1, 512, 256), new ShaderMaterial({
+    uniforms: earthU, vertexShader: shellVert, fragmentShader: earthFrag, defines: { ...(values ? { HAS_DATA: '' } : {}), ...(pIndex ? { HAS_PHOTO: '' } : {}) },
+  }));
   earth.rotation.y = -Math.PI / 2; // equirectangular u=0 at lon -180
   const air = new Mesh(new SphereGeometry(1.06, 96, 64), new ShaderMaterial({
     uniforms: { uRim: { value: rim } }, vertexShader: shellVert, fragmentShader: airFrag,
@@ -493,12 +693,14 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
     })));
   }
 
-  // borders: one line set per distinct border date, cross-faded
+  // borders: one line set per distinct border date, cross-faded. Only lines between two states: coasts are where land
+  // meets sea in the painted texture (Natural Earth 1:10m), so a coarser coastline is never drawn beside it
   const borderSets = new Map();
+  const statesObj = data.objects.cshapes || data.objects.countries;
   const bordersFor = date => {
     if (borderSets.has(date)) return borderSets.get(date);
-    const lines = [];
-    for (const f of countriesAt(countries, date)) lines.push(...ringsOf(f));
+    const on = g => !g.properties || !g.properties.from || !date || date === 'modern' || (g.properties.from <= date && date < g.properties.to);
+    const lines = mesh(data, statesObj, (a, b) => a !== b && on(a) && on(b)).coordinates;
     const m = fatLines(lines, values ? '#0b0e15' : '#c8cde0', 1.25);
     globe.add(m); borderSets.set(date, m); return m;
   };
@@ -523,9 +725,9 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
       if (l.kind === 'wall' && berlin) {
         // the real route; after 9 November 1989 it is drawn broken, as the crossings open
         const open = s.map.borders >= WALL_DOWN;
-        const r = clamp(s.camera.alt / R_KM * 0.0011, 0.0000045, 0.0004);
+        const h = clamp(s.camera.alt * 0.006, 0.08, 0.5); // km: tall enough to read from the scene's camera
         for (const kind of ['front', 'rear']) {
-          const m = wallMesh(berlin.wall, kind, kind === 'front' ? r : r * 0.6, open ? 7 : 0);
+          const m = wallMesh(berlin.wall, kind, kind === 'front' ? h : h * 0.6, open ? 7 : 0);
           if (m) { g.add(m); items.push({ type: 'line', m, mat: m.material, k: kind === 'front' ? 1 : 0.55, dash: open }); }
         }
         return;
@@ -685,7 +887,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
     const list = [...(s.map.markers || []), ...auto].map(m => {
       const el = document.createElement('div'); el.className = 'world__marker';
       el.innerHTML = `<i></i><span>${m.label}</span>${m.key ? '<b class="mono"></b>' : ''}`; labels.appendChild(el);
-      return { el, v: ll(m.at[0], m.at[1], 1.001), key: m.key, val: m.key ? el.querySelector('b') : null, text: '' };
+      return { el, v: ll(m.at[0], m.at[1], 1.000002), key: m.key, val: m.key ? el.querySelector('b') : null, text: '' };
     });
     markerEls.set(i, list); return list;
   };
@@ -726,7 +928,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
       }
       if (vis && !m.w) m.w = m.el.offsetWidth;
       const w = (m.w || 160) + 12;
-      m.el.classList.toggle('is-left', x + w > W && x - w > 0);
+      m.el.classList.toggle('is-left', x + w > W && (x - w > 0 || x > W - x)); // the side with room, else the roomier one
     });
   }
   function frame(now) {
@@ -762,6 +964,14 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
     earthU.uSlotA.value = (A.ig ? slotOf(i) : new Vector4(-1, 0, 1, 0)); earthU.uSlotB.value = (B.ig ? slotOf(j) : new Vector4(-1, 0, 1, 0));
     earthU.uWA.value = blend ? w : 0; earthU.uWB.value = blend ? 1 - w : 0;
     earthU.uMix.value = j === i ? 0 : mix;
+    earthU.uTA.value = terrainOf(i) || blank; earthU.uTB.value = j === i ? earthU.uTA.value : terrainOf(j) || blank;
+    const pA = photoOf(i), pB = j === i ? pA : photoOf(j);
+    const bind = (layer, tex, box) => { earthU[tex].value = layer ? layer.tex : blank; if (layer) earthU[box].value = layer.box; };
+    bind(pA && pA.far, 'uPA', 'uPBoxA'); bind(pA && pA.near, 'uQA', 'uQBoxA');
+    bind(pB && pB.far, 'uPB', 'uPBoxB'); bind(pB && pB.near, 'uQB', 'uQBoxB');
+    earthU.uPMask.value = pMask.value; earthU.uPMaskBox.value = pMaskBox.value;
+    const shown = l => l && (l.far || l.near);
+    photoNote.classList.toggle('is-on', !!((shown(pA) && mix < 0.5) || (shown(pB) && mix >= 0.5)));
     earthU.uHatch.value = 1.2e6 / Math.max(60, alt); // stripes about six pixels apart at any height
 
     const ba = bordersFor(sA.map.borders), bb = bordersFor(sB.map.borders);
@@ -811,7 +1021,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
     setGate(panel, g) { if (gates.get(panel) !== g) { gates.set(panel, g); dirty = true; } },
     pointOf: key => point.get(key),
     // paint a coming state and build its overlays and labels in idle time, so its first frame does no work
-    prepare(i) { if (i >= -1 && i < scenes.length) { texturesOf(i); overlayFor(i); markersFor(i); } },
+    prepare(i) { if (i >= -1 && i < scenes.length) { texturesOf(i); terrainOf(i); photoOf(i); overlayFor(i); markersFor(i); } },
     stats,
     destroy() { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); paint.destroy(); renderer.dispose(); },
   };

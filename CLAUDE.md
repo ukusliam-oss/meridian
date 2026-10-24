@@ -96,16 +96,44 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   frame CPU; `window.__meridianWorld` exposes it in the preview. `prepare(i)` paints and builds overlays in idle time.
 - `chapter.js` keys its ticker on the scroll position, not the scene index (a held panel keeps the same index while its
   years, chain steps and chart move).
-- Sharpness (map texture plan, phase 1 of 4: 1 sharpness, 2 terrain and water, 3 Berlin from the 1953 aerial mosaic,
-  4 phones and polish). `src/world/view.js` holds the camera (`placeCamera`, `setViewport`) and `footprint`: the screen
+- Sharpness. `src/world/view.js` holds the camera (`placeCamera`, `setViewport`) and `footprint`: the screen
   corners cast onto the globe for a scene's held camera. Each detail texture covers that footprint (+14%) with square
-  texels on the ground of ~0.55 CSS px (0.5 on phones), up to 4096 px a side (2048 on phones), for the screen the page
+  texels on the ground of ~0.55 CSS px (0.5 on phones, never finer than 3 m), up to 4096 px a side (2048 on phones), for the screen the page
   opened on; a big resize re-keys the states. Painted textures have mipmaps and are evicted by GPU bytes (320 MB, phones
   96 MB). `node tools/check-texels.mjs [chapter]` prints each scene's texture and relief density and fails if a detail
-  texture is coarser than 1 CSS px per texel; its relief column (CSS px per relief texel) is phase 2's target list.
+  texture is coarser than 1 CSS px per texel; its terrain column says which terrain level shows and its CSS px per texel.
 - State fills are a glaze (alpha 0.62–0.85 over the land, `GLAZE` in paint.js) with a lighter band inside each edge;
   the focus glow is clipped inside its country. The Natural Earth relief fades to its mean where a texel would cover
   more than ~2–4 px (a blurred relief reads as a smudge). Land has a one-pixel film grain.
+- Terrain and water. `node tools/build-terrain.mjs` reads Copernicus DEM GLO-90 tiles from AWS by range
+  requests (cached in `tools/.cache/dem/`, ~390 KB/s from here: a full rebuild takes ~30 min) and writes 512 px shaded
+  tiles to `assets/data/terrain/{z}/{x}_{y}.jpg` plus `index.json`: z0 (64 px/°, ~1.7 km, the 370 m data halved)
+  wherever a scene below 2500 km looks, z1 (256 px/°, ~430 m) where a screen pixel is under ~1 km, z2 (512 px/°,
+  ~215 m) where it is under 0.45 km; footprints from view.js on four reference screens, so rebuild after moving a
+  camera (`ONLY=0,1` rebuilds just those levels). Flat ground is 0.75. The engine (`terrainOf`) composes a state's
+  tiles over its detail box (at most 2048 px) on the main thread, coarse level first, and never waits for them: the
+  base relief shows until they arrive. `composeTiles` draws with high-quality smoothing and leaves out a level more
+  than 3× finer than its canvas, so a continent-wide view never downloads z1. Attribution is in each chapter's note.
+- `borders.json` now uses Natural Earth 1:10m land, rivers (+ Europe), lakes (+ Europe) and the 200 m bathymetry
+  (`tools/.cache/ne/`, from naciscdn.org), keeps 80% of points in a central-European CORE box, and is quantized at 1e6.
+  Border lines are only lines between two states (`mesh`), so the CShapes coast is never drawn beside the 1:10m one;
+  fills are clipped to the land. Water is painted opaque with alpha 254 (`SHELF`, `WATERC`): the shader reads alpha
+  254 as water (lit, never terrain-shaded), because partly transparent paint comes out of the upload darkened by its own
+  alpha. Polygons from Natural Earth are filled even-odd, so holes stay holes whatever their winding. The shelf is a
+  neutral slate just above the ocean's black, painted over the part of a box the bathymetry covers: a blue shelf
+  matched the Western bloc's navy and Britain and France sank into it. Rivers thin out by rank as texels grow.
+- Berlin from the air. `node tools/build-berlin-photo.mjs` fetches the Senate's June 1953 vertical photographs (WMS
+  `luftbild_1953_22`, dl-de/zero-2-0; cached in `tools/.cache/berlin1953/`) as 512 px greyscale tiles: z1 2048 px/°,
+  z2 8192 px/° (the city), z3 32768 px/° (~3.4 m, the centre). The mosaic is a patchwork of frames exposed differently,
+  so the build evens it out before writing tiles: long straight seams found by block votes get half their step on each
+  side (faded over ~2 km), a ~300 m local contrast normalisation lifts hazy frames, and z3 takes z2's local tone. The
+  coverage mask is cut to Greater Berlin (the sector outlines) with ~1 km to spare. A scene with `map.city` gets two
+  photo layers (`photoOf`): `far` over the detail box and `near` around the target (reaching 3.2× further north on a
+  tilted camera), both clipped to the city's box. The shader draws the photo in ink-to-paper tones tinted by the
+  painted hue (East Berlin violet), compiled in only when a chapter has a photo index (`HAS_PHOTO`; `HAS_DATA` likewise),
+  which keeps the shader under 16 texture units. The Wall stands as a ribbon (`wallMesh`); a scene camera may set
+  `tilt` (KQ6 13, 14 and 30 look across the centre from 8–10 km at 40–42°). Some frames in the source are themselves
+  hazy or overlap translucently (north-west of the centre); that cannot be fixed here.
 - Borders and focus outlines are `LineSegments2` (1.25 px and 2 px on screen, antialiased) at radius 1, scaled per frame
   to sit `alt / R_KM × 0.002` above the ground; the sphere is 512 × 256 (384 × 192 on phones) so its facets sag at most
   ~120 m and city lines stay on their fills in tilted views.
@@ -144,6 +172,16 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   worker in its `init` message.
 - **The preview pane throttles requestAnimationFrame** while nothing drives it, so the globe can
   look dim or mid-zoom in screenshots. Run a short rAF loop in the page before screenshotting.
+- **Headless checks beat the pane** when the user hides it (rAF stops): `agent-browser --session kq6` (Chrome for
+  Testing from the Playwright cache, `--executable-path` on first launch). To land on a scene's hold, scroll Lenis so
+  the panel's top sits at `innerHeight / 2` (`lenis.scrollTo(y, { immediate: true, force: true })`), wait ~10 s, then
+  hide `.sc__panel`, `.pillnav`, `.nav` before the screenshot. Reload changed modules and tiles with
+  `fetch(url, { cache: 'reload' })` first. `performance` keeps only 250 resource entries unless raised.
+- **Markers sit on the ground** (radius 1.000002): a lift of 6 km (the old 1.001) put labels ~300 px off their place
+  on tilted city views.
+- Painted canvases are bottom-up (`setTransform(1, 0, 0, -1, 0, H)`): row 0 is the south edge, so a pixel sampled at
+  the top of the canvas is the south of the box. Colours reach the screen close to linear: `SHELF` (44, 52, 70) shows
+  as about (5, 7, 12), so judge map colours from screenshots, not from the numbers.
 - **Module cache**: python's http.server lets the browser cache JS modules; a `?v=` on the page
   does not refresh them. `fetch(url, { cache: 'reload' })` each changed module, then reload.
 - `data-count` is global: core.js animates every element with it. Use another attribute for

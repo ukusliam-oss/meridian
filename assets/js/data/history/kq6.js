@@ -468,7 +468,7 @@ export default {
     },
     {
       id: 'kq6-b4', part: 'The Berlin Wall', date: '1961-08-13', dateLabel: '13 August 1961',
-      camera: { lat: 52.5, lon: 13.4, alt: 90 },
+      camera: { lat: 52.522, lon: 13.385, alt: 8, tilt: 40 }, // low over the centre, between the Brandenburg Gate and Bernauer Straße
       map: {
         borders: '1961-08-13',
         fill: fills({ GDR: 'focus' }),
@@ -499,7 +499,7 @@ export default {
     },
     {
       id: 'kq6-b5', part: 'The Berlin Wall', date: '1961-10-27', dateLabel: 'October 1961–June 1963',
-      camera: { lat: 52.5, lon: 13.4, alt: 60 },
+      camera: { lat: 52.497, lon: 13.37, alt: 8, tilt: 42 }, // between Checkpoint Charlie and Schöneberg town hall
       map: {
         borders: '1961-10-27',
         fill: fills({ GDR: 'focus' }),
@@ -528,7 +528,7 @@ export default {
     },
     {
       id: 'kq6-b6', part: 'The Berlin Wall', date: '1963-06-26', dateLabel: '1961–1989',
-      camera: { lat: 52.5, lon: 13.4, alt: 95 },
+      camera: { lat: 52.5, lon: 13.4, alt: 70, tilt: 30 }, // the whole ring of the Wall
       map: {
         borders: '1963-06-26',
         fill: fills({ GDR: 'focus' }),
@@ -1043,7 +1043,7 @@ export default {
     },
     {
       id: 'kq6-g4', part: 'Gorbachev and 1989', date: '1989-11-09', dateLabel: '9 October–9 November 1989',
-      camera: { lat: 52.5, lon: 13.4, alt: 95 },
+      camera: { lat: 52.533, lon: 13.39, alt: 10, tilt: 40 }, // from Bornholmer Straße down to the Brandenburg Gate
       map: {
         borders: '1989-11-09',
         fill: fills({ GDR: 'focus', POL: 'neutral', HUN: 'neutral' }),

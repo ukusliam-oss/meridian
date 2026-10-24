@@ -16,6 +16,8 @@ export const PALETTE = {
 const SECTORS = { us: '#2c5687', uk: '#2d6b74', fr: '#4a4f93', su: PALETTE.bloc };
 // how much of a state colour covers the land beneath it; the focus colour is bright, so it is the thinnest glaze
 const GLAZE = { focus: 0.62, soviet: 0.82, bloc: 0.8, west: 0.85, neutral: 0.8 };
+// water colours, with alpha 254/255 (see paintTexture): the shallow sea, and rivers and lakes
+const SHELF = 'rgba(44, 52, 70, 0.996)', WATERC = 'rgba(76, 122, 172, 0.996)';
 const lighter = hex => { const n = parseInt(hex.slice(1), 16), m = c => Math.round(c + (255 - c) * 0.38); return `rgb(${m(n >> 16)},${m((n >> 8) & 255)},${m(n & 255)})`; };
 export const WALL_UP = '1961-08-13', WALL_DOWN = '1989-11-09';
 
@@ -39,14 +41,19 @@ export function featuresOf(data) {
     sectors: feature(data, data.objects.sectors).features.map(upright),
     wall: feature(data, data.objects.wall).features, strip: feature(data, data.objects.strip).features.map(upright),
   } : null;
-  return { countries, land: feature(data, data.objects.land), berlin };
+  // water (borders.json only): rivers { r: rank }, lakes { r: rank }, and sea deeper than 200 m around Europe
+  const water = data.objects.rivers ? {
+    rivers: feature(data, data.objects.rivers).features, lakes: feature(data, data.objects.lakes).features.map(upright),
+    deep: feature(data, data.objects.deep).features.map(upright), box: [-26, 33, 50, 72],
+  } : null;
+  return { countries, land: feature(data, data.objects.land), berlin, water };
 }
 export const countriesAt = (countries, date) => {
   const d = dayNum(date === 'modern' || !date ? '2000-01-01' : date);
   return countries.filter(f => f.from <= d && d < f.to);
 };
 
-export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90]) {
+export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90], texelCss = 0) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   ctx.setTransform(1, 0, 0, -1, 0, H); // bottom-up, see the header
@@ -60,9 +67,27 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90]) {
   const fill = map.fill || {};
   const date = map.borders;
   const countries = countriesAt(feats.countries, date);
+  // ground size of one texel, which decides how much water detail is worth drawing; css: CSS px per texel (detail only)
+  const texelKm = (box[2] - box[0]) * 111.32 * Math.cos((box[1] + box[3]) / 2 * DEG) / W, css = world ? 0 : (texelCss || 0.55);
+  const wat = !world && feats.water;
+  const rankMax = texelKm < 0.05 ? 11 : texelKm < 0.15 ? 9 : texelKm < 0.4 ? 7 : texelKm < 1 ? 6 : texelKm < 2.5 ? 5 : 4;
   ctx.clearRect(0, 0, W, H);
+  // Water is painted opaque in its final colour but with alpha 254/255, which tells the shader it is water (lit, never
+  // shaded by terrain); partly transparent paint would come out of the GPU upload multiplied by its own alpha.
+  // The continental shelf: a lighter sea, then the deeper sea cut back out (only where the bathymetry covers the box).
+  const wb = wat && wat.box;
+  if (wat && box[0] < wb[2] && box[2] > wb[0] && box[1] < wb[3] && box[3] > wb[1]) {
+    // over the part of the box the bathymetry covers, in the same coordinates as the paths (y from the north edge)
+    const x0 = Math.max(0, (wb[0] - box[0]) * sx), x1 = Math.min(W, (wb[2] - box[0]) * sx);
+    const y0 = Math.max(0, (box[3] - wb[3]) * sy), y1 = Math.min(H, (box[3] - wb[1]) * sy);
+    ctx.fillStyle = SHELF; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.globalCompositeOperation = 'destination-out';
+    for (const f of wat.deep) { ctx.beginPath(); path(f); ctx.fill('evenodd'); } // even-odd: holes stay holes, however they are wound
+    ctx.globalCompositeOperation = 'source-over';
+  }
   ctx.fillStyle = PALETTE.land;
-  ctx.beginPath(); path(feats.land); ctx.fill();
+  ctx.beginPath(); path(feats.land); ctx.fill('evenodd');
+  ctx.save(); ctx.clip('evenodd'); // fills stay on the land, so the 1:10m coastline stays the edge
   // fills are a glaze over the land, not a lid: the land shows through (so the relief does), and a lighter band just
   // inside each filled state's edge says where it ends, about two screen pixels wide in a detail texture
   const edge = world ? 1.5 : 3;
@@ -75,6 +100,19 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90]) {
     ctx.save(); ctx.clip(); ctx.globalAlpha = 0.5; ctx.strokeStyle = lighter(c); ctx.lineWidth = edge * 2; ctx.lineJoin = 'round'; ctx.stroke(); ctx.restore();
   }
   ctx.globalAlpha = 1;
+  ctx.restore();
+  // lakes and rivers: cut out of the land, then painted as water (alpha 254, as the shelf); a river is wider the higher
+  // its rank, about 0.8–2.2 screen pixels
+  if (wat) {
+    const lakes = wat.lakes.filter(f => f.properties.r <= rankMax), rivers = wat.rivers.filter(f => f.properties.r <= rankMax);
+    const draw = () => {
+      for (const f of lakes) { ctx.beginPath(); path(f); ctx.fill('evenodd'); }
+      ctx.lineJoin = ctx.lineCap = 'round';
+      for (const f of rivers) { const r = f.properties.r; ctx.lineWidth = (r <= 3 ? 2.2 : r <= 6 ? 1.6 : r <= 9 ? 1.1 : 0.8) / css; ctx.beginPath(); path(f); ctx.stroke(); }
+    };
+    ctx.globalCompositeOperation = 'destination-out'; draw();
+    ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = ctx.strokeStyle = WATERC; draw();
+  }
   const focus = map.focus || [];
   if (focus.length) {
     ctx.save(); ctx.strokeStyle = PALETTE.focus; ctx.globalAlpha = 0.85; ctx.lineWidth = Math.max(1, W / 2600); ctx.lineJoin = 'round';
@@ -171,6 +209,6 @@ export function runJob(feats, job, makeCanvas) {
     return { ids, ms: performance.now() - t0 };
   }
   const c = makeCanvas(job.W, job.H);
-  paintTexture(c, feats, job.map, job.box);
+  paintTexture(c, feats, job.map, job.box, job.css);
   return { canvas: c, ms: performance.now() - t0 };
 }
