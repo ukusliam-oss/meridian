@@ -45,8 +45,8 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   `assets/js/data/history/kq6.js` and turns scroll into globe progress (a scene holds while its panel is on the reading
   line; the camera flies in the gaps). `assets/css/chapter.css` adds the globe layer, scene panels, pill navigator and
   scene menu on top of site.css's type system (`--acc` = `--accent`; History chapters and their hub cards are violet
-  `--brand`, the History hub itself amber). The pill's orb is a glass ball in a progress ring: a lit arc with a
-  glowing head follows the scroll, dots mark where each part starts.
+  `--brand`, the History hub itself amber). The pill ends in their progress ring (a 10% lilac disc, a
+  faint track, a white bar filling from the top as the chapter is read, an arrow icon in the middle).
 - `history/kq6-paper2.html` + `assets/js/paper2.js` — Paper 2 room from `kq6-paper2.js` (sources on paper cards).
   The History hub links both through `CHAPTERS` in `tools/pages.py`.
 - `src/world/engine.js` → `assets/js/world.js` (`npm run world`). Per scene: a 2048 world texture plus a sharp detail

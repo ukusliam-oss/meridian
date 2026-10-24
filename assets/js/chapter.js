@@ -341,11 +341,7 @@ track.innerHTML = scenes.map((s, i) => `<i class="ribbon__tick${parts.some(p => 
 const needle = $('[data-needle]'), yearEl = $('[data-year]'), labelEl = $('[data-label]');
 if ($('[data-ends]')) $('[data-ends]').innerHTML = `<span>${CFG.ribbon[0].slice(0, 4)}</span><span>${+CFG.ribbon[1].slice(0, 4) - 1}</span>`;
 const pillPart = $('[data-pill-part]'), pillDate = $('[data-pill-date]');
-const orbArc = $('[data-orb]'), orbHead = $('[data-orb-head]'), orbBall = $('[data-orb-ball]');
-// a dot on the orb's ring where each part starts (part k starts at k / N of the way round, from the top)
-const orbTicks = parts.filter(p => p.first > 0).map(p => p.first / N);
-$('[data-orb-ticks]').innerHTML = orbTicks.map(t => { const a = t * 2 * Math.PI - Math.PI / 2; return `<circle class="pillnav__tick" cx="${(20 + 18 * Math.cos(a)).toFixed(2)}" cy="${(20 + 18 * Math.sin(a)).toFixed(2)}" r="1.1"/>`; }).join('');
-const tickEls = $$('.pillnav__tick');
+const ringBar = $('[data-orb]');
 // pill labels roll like their button text: the old line slides up and out as the new one comes up from below
 for (const el of [pillPart, pillDate]) { el.classList.add('pillnav__roll'); el.innerHTML = `<span>${el.innerHTML}</span>`; }
 function roll(el, html) {
@@ -373,7 +369,6 @@ function updateUI(p) {
     lastShown = key;
     const s = scenes[near];
     labelEl.textContent = s.dateLabel;
-    if (key >= 0 && !reduced) gsap.fromTo(orbBall, { scale: 0.84 }, { scale: 1, duration: 0.7, ease: 'back.out(2.4)', overwrite: true });
     roll(pillPart, esc(p < -0.5 ? CFG.pill.part : `${s.part} · ${String(near + 1).padStart(2, '0')}/${N}`));
     roll(pillDate, p < -0.5 ? CFG.pill.date : esc(s.dateLabel));
     $$('[data-go]', menu).forEach(a => a.setAttribute('aria-current', +a.dataset.go === near));
@@ -384,10 +379,7 @@ function updateUI(p) {
   const fr = Math.min(1, Math.max(0, (p + 1) / N));
   if (Math.abs(fr - lastFr) > 1e-4) {
     lastFr = fr;
-    const on = fr > 0.004 ? 1 : 0;
-    orbArc.style.strokeDashoffset = (1 - fr).toFixed(4); orbArc.style.opacity = on;
-    orbHead.style.transform = `rotate(${(fr * 360).toFixed(2)}deg)`; orbHead.style.opacity = on;
-    tickEls.forEach((el, k) => el.classList.toggle('is-past', fr >= orbTicks[k] - 1e-4));
+    ringBar.style.strokeDashoffset = (1 - fr).toFixed(4); ringBar.style.opacity = fr > 0.004 ? 1 : 0; // a round cap would show a dot at 0
   }
 }
 
