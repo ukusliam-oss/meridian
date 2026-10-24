@@ -13,6 +13,8 @@ onmessage = async ({ data: msg }) => {
   if (msg.type === 'init') {
     if (msg.focus) PALETTE.focus = msg.focus; // the chapter accent, set on the page's copy of the palette
     try {
+      // the map's lettering (Berlin's sector names) uses the site's mono face, which a worker has to load itself
+      try { const f = new FontFace('Plex Mono', `url(${new URL('../fonts/plex-mono-500.woff2', import.meta.url)})`, { weight: '500' }); self.fonts.add(f); await f.load(); } catch {}
       const topo = await (await fetch(msg.url)).json();
       feats = featuresOf(topo);
       postMessage({ ready: true });

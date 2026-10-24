@@ -390,10 +390,6 @@
 .world__ticks { display: flex; justify-content: space-between; color: rgb(255 255 255 / .72); font-size: 11.5px; }
 .world__unit { margin-top: 8px; color: rgb(255 255 255 / .72) !important; font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
 .world__nodata { display: inline-block; width: 14px; height: 10px; border-radius: 2px; background: repeating-linear-gradient(135deg, #272c37 0 3px, #3c424f 3px 4px); }
-.world__photo { position: absolute; left: max(var(--gutter), 24px); bottom: 92px; z-index: 2; margin: 0; padding: 5px 9px; border-radius: 7px;
-  background: rgb(6 7 12 / .74); color: rgb(255 255 255 / .78); opacity: 0; transition: opacity .5s var(--ease); pointer-events: none; }
-.world__photo.is-on { opacity: 1; }
-@media (max-width: 760px) { .world__photo { left: var(--gutter); bottom: calc(env(safe-area-inset-bottom) + 146px); } }
 .world__src { margin-top: 6px; font-size: 12px; line-height: 1.35; color: rgb(255 255 255 / .66); }
 @media (max-width: 900px) { .world__legend { left: var(--gutter); right: auto; top: calc(var(--nav-h) + 8px); bottom: auto; width: min(280px, 80vw); } }
 

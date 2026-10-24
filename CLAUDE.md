@@ -59,7 +59,7 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - `src/world/engine.js` → `assets/js/world.js` (`npm run world`). Per scene: a 2048 world texture plus a sharp detail
   texture around the camera target, cross-faded in the shader; relief from `assets/data/relief-{world,europe}.jpg`;
   borders, arrows, the iron curtain (real FRG/AUT vs GDR/CSK/HUN borders, via topojson mesh) and the Wall as tubes.
-  `city: 'berlin'` paints the 1945 sectors, West Berlin and the border strip; `kind: 'wall'` draws the real 1989 route.
+  `city: 'berlin'` paints the four sectors and the border strip; `kind: 'wall'` draws the real 1989 route.
 - `tools/build-maps.mjs` (`npm run maps`) → `assets/data/borders.json`. Inputs go in `tools/.cache/` (gitignored):
   CShapes 2.0 (`icr.ethz.ch/data/cshapes/CShapes-2.0.geojson`, CC BY-NC-SA 4.0), and from `gdi.berlin.de` the WFS
   layers `berlinermauer:a_grenzmauer|b_hinterlandmauer|d_grenzstreifen` and `alkis_ortsteile:ortsteile`
@@ -122,18 +122,12 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   alpha. Polygons from Natural Earth are filled even-odd, so holes stay holes whatever their winding. The shelf is a
   neutral slate just above the ocean's black, painted over the part of a box the bathymetry covers: a blue shelf
   matched the Western bloc's navy and Britain and France sank into it. Rivers thin out by rank as texels grow.
-- Berlin from the air. `node tools/build-berlin-photo.mjs` fetches the Senate's June 1953 vertical photographs (WMS
-  `luftbild_1953_22`, dl-de/zero-2-0; cached in `tools/.cache/berlin1953/`) as 512 px greyscale tiles: z1 2048 px/°,
-  z2 8192 px/° (the city), z3 32768 px/° (~3.4 m, the centre). The mosaic is a patchwork of frames exposed differently,
-  so the build evens it out before writing tiles: long straight seams found by block votes get half their step on each
-  side (faded over ~2 km), a ~300 m local contrast normalisation lifts hazy frames, and z3 takes z2's local tone. The
-  coverage mask is cut to Greater Berlin (the sector outlines) with ~1 km to spare. A scene with `map.city` gets two
-  photo layers (`photoOf`): `far` over the detail box and `near` around the target (reaching 3.2× further north on a
-  tilted camera), both clipped to the city's box. The shader draws the photo in ink-to-paper tones tinted by the
-  painted hue (East Berlin violet), compiled in only when a chapter has a photo index (`HAS_PHOTO`; `HAS_DATA` likewise),
-  which keeps the shader under 16 texture units. The Wall stands as a ribbon (`wallMesh`); a scene camera may set
-  `tilt` (KQ6 13, 14 and 30 look across the centre from 8–10 km at 40–42°). Some frames in the source are themselves
-  hazy or overlap translucently (north-west of the centre); that cannot be fixed here.
+- Berlin. `city: 'berlin'` paints the four sectors opaque in their occupying powers' colours (`SECTORS` in paint.js:
+  American blue, British teal, French indigo, Soviet red) on every Berlin scene, 1945 to 1989, names them in the map
+  itself (Plex Mono capitals ~12 CSS px at the held camera, detail textures only; the worker loads the font), then the
+  border strip after August 1961. The Wall stands as a ribbon (`wallMesh`); a scene camera may set `tilt` (KQ6 13, 14
+  and 30 look across the centre from 26–28 km at 32°). The June 1953 aerial photographs were tried as a base layer
+  and dropped: the official mosaic is a patchwork of differently exposed frames and read as unsteady.
 - Borders and focus outlines are `LineSegments2` (1.25 px and 2 px on screen, antialiased) at radius 1, scaled per frame
   to sit `alt / R_KM × 0.002` above the ground; the sphere is 512 × 256 (384 × 192 on phones) so its facets sag at most
   ~120 m and city lines stay on their fills in tilted views.

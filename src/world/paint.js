@@ -13,7 +13,10 @@ export const dayNum = s => { const [y, m, d] = s.split('-').map(Number); return 
 export const PALETTE = {
   land: '#2a303d', soviet: '#9b2c35', bloc: '#6e3a3c', west: '#2d4a6e', neutral: '#4b5160', focus: '#a084ee',
 };
-const SECTORS = { us: '#2c5687', uk: '#2d6b74', fr: '#4a4f93', su: PALETTE.bloc };
+// Berlin's four sectors in the colour of the power that held each, opaque, from 1945 to 1990 (West Berlin stayed under
+// the three Western Allies, East Berlin was the Soviet sector), lettered in the map at a hand-placed point
+const SECTORS = { us: '#4270ac', uk: '#3c837f', fr: '#6966b6', su: '#a2434c' };
+const SECTOR_NAMES = { us: [52.44, 13.27, 'AMERICAN SECTOR'], uk: [52.51, 13.21, 'BRITISH SECTOR'], fr: [52.585, 13.30, 'FRENCH SECTOR'], su: [52.53, 13.47, 'SOVIET SECTOR'] };
 // how much of a state colour covers the land beneath it; the focus colour is bright, so it is the thinnest glaze
 const GLAZE = { focus: 0.62, soviet: 0.82, bloc: 0.8, west: 0.85, neutral: 0.8 };
 // water colours, with alpha 254/255 (see paintTexture): the shallow sea, and rivers and lakes
@@ -122,19 +125,26 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90], tex
   // Berlin at city scale: the four sectors of 1945, then West Berlin as one Western enclave, then the border strip
   const city = map.city === 'berlin' && feats.berlin;
   if (city) {
-    const before = date < '1949-10-07';
-    for (const f of feats.berlin.sectors) {
-      const sec = f.properties.sector;
-      if (sec === 'su' && !before) continue;
-      ctx.fillStyle = before ? SECTORS[sec] : PALETTE.west;
-      ctx.beginPath(); path(f); ctx.fill();
-    }
+    for (const f of feats.berlin.sectors) { ctx.fillStyle = SECTORS[f.properties.sector]; ctx.beginPath(); path(f); ctx.fill(); }
     if (date >= WALL_UP) {
       ctx.fillStyle = 'rgba(232, 226, 255, 0.34)';
       for (const f of feats.berlin.strip) { ctx.beginPath(); path(f); ctx.fill(); }
     }
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'; ctx.lineWidth = Math.max(1, W / 2400);
     for (const f of feats.berlin.sectors) { ctx.beginPath(); path(f); ctx.stroke(); }
+    // the names, about 12 CSS px high where the camera holds (detail textures only)
+    if (!world) {
+      const size = 12 / css;
+      ctx.font = `500 ${size.toFixed(1)}px "Plex Mono", ui-monospace, Menlo, monospace`;
+      ctx.letterSpacing = `${(size * 0.12).toFixed(1)}px`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      for (const [lat, lon, name] of Object.values(SECTOR_NAMES)) {
+        const x = (lon - box[0]) * sx, y = (box[3] - lat) * sy;
+        if (x < 0 || x > W || y < 0 || y > H) continue;
+        ctx.fillText(name, x, y);
+      }
+      ctx.letterSpacing = '0px';
+    }
   } else if (box[2] - box[0] < 360) {
     // an inner glow in the focus countries so the eye lands on them; kept inside the border, so it never spills onto a
     // neighbour (detail texture only: blur is expensive)

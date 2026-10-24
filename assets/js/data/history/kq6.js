@@ -4,7 +4,7 @@
 // coverage lint. Camera and map values are first guesses for the engine to tune.
 // Map notes: before 7 October 1949 the GDR and FRG keys stand for the Soviet and western occupation zones.
 // `lines` are coarse hand-placed guides. For `kind: 'wall'` the engine draws the real 1989 route (Geoportal Berlin) instead,
-// and `city: 'berlin'` paints the four sectors (before October 1949), West Berlin and the border strip.
+// and `city: 'berlin'` paints the four sectors in their occupying powers' colours, named on the map, and the border strip.
 // Status: draft (checked against the listed sources on 2026-10-23, not yet teacher-reviewed).
 
 const IRON_CURTAIN = [
@@ -376,12 +376,7 @@ export default {
         borders: '1949-05-01',
         fill: fills({ GDR: 'focus' }),
         arrows: [],
-        markers: [
-          { at: [52.44, 13.27], label: 'American sector' },
-          { at: [52.51, 13.24], label: 'British sector' },
-          { at: [52.58, 13.31], label: 'French sector' },
-          { at: [52.52, 13.46], label: 'Soviet sector (East Berlin)' },
-        ],
+        markers: [],
         lines: [],
         city: 'berlin',
       },
@@ -468,7 +463,7 @@ export default {
     },
     {
       id: 'kq6-b4', part: 'The Berlin Wall', date: '1961-08-13', dateLabel: '13 August 1961',
-      camera: { lat: 52.522, lon: 13.385, alt: 8, tilt: 40 }, // low over the centre, between the Brandenburg Gate and Bernauer Straße
+      camera: { lat: 52.505, lon: 13.38, alt: 28, tilt: 32 }, // over the centre: the whole city, the Brandenburg Gate and Bernauer Straße
       map: {
         borders: '1961-08-13',
         fill: fills({ GDR: 'focus' }),
@@ -499,7 +494,7 @@ export default {
     },
     {
       id: 'kq6-b5', part: 'The Berlin Wall', date: '1961-10-27', dateLabel: 'October 1961–June 1963',
-      camera: { lat: 52.497, lon: 13.37, alt: 8, tilt: 42 }, // between Checkpoint Charlie and Schöneberg town hall
+      camera: { lat: 52.49, lon: 13.37, alt: 26, tilt: 32 }, // between Checkpoint Charlie and Schöneberg town hall
       map: {
         borders: '1961-10-27',
         fill: fills({ GDR: 'focus' }),
@@ -1043,7 +1038,7 @@ export default {
     },
     {
       id: 'kq6-g4', part: 'Gorbachev and 1989', date: '1989-11-09', dateLabel: '9 October–9 November 1989',
-      camera: { lat: 52.533, lon: 13.39, alt: 10, tilt: 40 }, // from Bornholmer Straße down to the Brandenburg Gate
+      camera: { lat: 52.52, lon: 13.39, alt: 28, tilt: 32 }, // from Bornholmer Straße down to the Brandenburg Gate
       map: {
         borders: '1989-11-09',
         fill: fills({ GDR: 'focus', POL: 'neutral', HUN: 'neutral' }),
