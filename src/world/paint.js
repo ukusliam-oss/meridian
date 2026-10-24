@@ -3,7 +3,7 @@
 // so the engine uploads them with flipY off whatever the source (canvas, ImageBitmap or typed array):
 //   paintTexture: land, dated state fills, Berlin, halos and areas, antialiased (a 2D canvas)
 //   rasterIds:    the index + 1 of the country under each texel, no antialiasing, so the shader can colour by data
-import { geoEquirectangular, geoPath, geoArea } from 'd3-geo';
+import { geoEquirectangular, geoPath, geoArea, geoTransform } from 'd3-geo';
 import { feature } from 'topojson-client';
 
 export const DEG = Math.PI / 180;
@@ -14,6 +14,9 @@ export const PALETTE = {
   land: '#2a303d', soviet: '#9b2c35', bloc: '#6e3a3c', west: '#2d4a6e', neutral: '#4b5160', focus: '#a084ee',
 };
 const SECTORS = { us: '#2c5687', uk: '#2d6b74', fr: '#4a4f93', su: PALETTE.bloc };
+// how much of a state colour covers the land beneath it; the focus colour is bright, so it is the thinnest glaze
+const GLAZE = { focus: 0.62, soviet: 0.82, bloc: 0.8, west: 0.85, neutral: 0.8 };
+const lighter = hex => { const n = parseInt(hex.slice(1), 16), m = c => Math.round(c + (255 - c) * 0.38); return `rgb(${m(n >> 16)},${m((n >> 8) & 255)},${m(n & 255)})`; };
 export const WALL_UP = '1961-08-13', WALL_DOWN = '1989-11-09';
 
 const ringFix = poly => (geoArea(poly) > 2 * Math.PI ? { type: 'Polygon', coordinates: poly.coordinates.map(r => r.slice().reverse()) } : poly);
@@ -47,8 +50,12 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90]) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   ctx.setTransform(1, 0, 0, -1, 0, H); // bottom-up, see the header
-  const k = W / ((box[2] - box[0]) * DEG);
-  const proj = geoEquirectangular().scale(k).translate([-k * box[0] * DEG, k * box[3] * DEG]).precision(0.1);
+  // the world: d3's equirectangular (it cuts at the antimeridian); a detail box: lon and lat scaled separately, so its
+  // texels can be square on the ground (see textureSize in view.js)
+  const world = box[2] - box[0] >= 360;
+  const k = W / ((box[2] - box[0]) * DEG), sx = W / (box[2] - box[0]), sy = H / (box[3] - box[1]);
+  const proj = world ? geoEquirectangular().scale(k).translate([-k * box[0] * DEG, k * box[3] * DEG]).precision(0.1)
+    : geoTransform({ point(lon, lat) { this.stream.point((lon - box[0]) * sx, (box[3] - lat) * sy); } });
   const path = geoPath(proj, ctx);
   const fill = map.fill || {};
   const date = map.borders;
@@ -56,12 +63,18 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90]) {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = PALETTE.land;
   ctx.beginPath(); path(feats.land); ctx.fill();
+  // fills are a glaze over the land, not a lid: the land shows through (so the relief does), and a lighter band just
+  // inside each filled state's edge says where it ends, about two screen pixels wide in a detail texture
+  const edge = world ? 1.5 : 3;
   for (const f of countries) {
     const state = fill[f.properties.key];
     if (!state) continue;
-    ctx.fillStyle = PALETTE[state] || PALETTE.land;
+    const c = PALETTE[state] || PALETTE.land;
+    ctx.globalAlpha = GLAZE[state] ?? 0.8; ctx.fillStyle = c;
     ctx.beginPath(); path(f); ctx.fill();
+    ctx.save(); ctx.clip(); ctx.globalAlpha = 0.5; ctx.strokeStyle = lighter(c); ctx.lineWidth = edge * 2; ctx.lineJoin = 'round'; ctx.stroke(); ctx.restore();
   }
+  ctx.globalAlpha = 1;
   const focus = map.focus || [];
   if (focus.length) {
     ctx.save(); ctx.strokeStyle = PALETTE.focus; ctx.globalAlpha = 0.85; ctx.lineWidth = Math.max(1, W / 2600); ctx.lineJoin = 'round';
@@ -85,11 +98,14 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90]) {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'; ctx.lineWidth = Math.max(1, W / 2400);
     for (const f of feats.berlin.sectors) { ctx.beginPath(); path(f); ctx.stroke(); }
   } else if (box[2] - box[0] < 360) {
-    // a soft halo around the focus countries so the eye lands on them (detail texture only: blur is expensive)
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.filter = `blur(${Math.round(W / 700)}px)`;
-    ctx.globalAlpha = focus.length && !Object.values(fill).includes('focus') ? 0.14 : 0.3; ctx.fillStyle = PALETTE.focus;
-    for (const f of countries) if (fill[f.properties.key] === 'focus' || focus.includes(f.properties.key)) { ctx.beginPath(); path(f); ctx.fill(); }
-    ctx.restore();
+    // an inner glow in the focus countries so the eye lands on them; kept inside the border, so it never spills onto a
+    // neighbour (detail texture only: blur is expensive)
+    const glow = Math.max(4, Math.round(Math.max(W, H) / 220));
+    for (const f of countries) if (fill[f.properties.key] === 'focus' || focus.includes(f.properties.key)) {
+      ctx.save(); ctx.beginPath(); path(f); ctx.clip();
+      ctx.globalCompositeOperation = 'lighter'; ctx.filter = `blur(${glow}px)`; ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = PALETTE.focus; ctx.lineWidth = glow * 2; ctx.stroke(); ctx.restore();
+    }
   }
   // extra areas drawn last (an optional hand-drawn shape over everything)
   for (const a of map.areas || []) {

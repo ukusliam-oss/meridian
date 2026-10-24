@@ -96,8 +96,25 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   frame CPU; `window.__meridianWorld` exposes it in the preview. `prepare(i)` paints and builds overlays in idle time.
 - `chapter.js` keys its ticker on the scroll position, not the scene index (a held panel keeps the same index while its
   years, chain steps and chart move).
+- Sharpness (map texture plan, phase 1 of 4: 1 sharpness, 2 terrain and water, 3 Berlin from the 1953 aerial mosaic,
+  4 phones and polish). `src/world/view.js` holds the camera (`placeCamera`, `setViewport`) and `footprint`: the screen
+  corners cast onto the globe for a scene's held camera. Each detail texture covers that footprint (+14%) with square
+  texels on the ground of ~0.55 CSS px (0.5 on phones), up to 4096 px a side (2048 on phones), for the screen the page
+  opened on; a big resize re-keys the states. Painted textures have mipmaps and are evicted by GPU bytes (320 MB, phones
+  96 MB). `node tools/check-texels.mjs [chapter]` prints each scene's texture and relief density and fails if a detail
+  texture is coarser than 1 CSS px per texel; its relief column (CSS px per relief texel) is phase 2's target list.
+- State fills are a glaze (alpha 0.62–0.85 over the land, `GLAZE` in paint.js) with a lighter band inside each edge;
+  the focus glow is clipped inside its country. The Natural Earth relief fades to its mean where a texel would cover
+  more than ~2–4 px (a blurred relief reads as a smudge). Land has a one-pixel film grain.
+- Borders and focus outlines are `LineSegments2` (1.25 px and 2 px on screen, antialiased) at radius 1, scaled per frame
+  to sit `alt / R_KM × 0.002` above the ground; the sphere is 512 × 256 (384 × 192 on phones) so its facets sag at most
+  ~120 m and city lines stay on their fills in tilted views.
 
 ## Measured facts
+- Map sharpness, phase 1 (2026-10-24, dev Mac, preview): KQ6 and the Economics chapter have every detail texture at
+  0.55–0.84 CSS px per texel (desktop) and 0.52–0.70 (phone); before, Berlin was 2–5× and Budapest ~2× coarser than the
+  screen. Scrolling KQ6: 16.7 ms median frame, 17.7 ms p95, 0.35 ms CPU per frame; the chapter loads in 2.1 s with the
+  preview pane visible (a hidden pane pauses rAF, and the loader waits for frames).
 - History chapter (2026-10-23): borders.json 414 KB (315 state versions, Europe detailed, rest coarse, Berlin layers);
   relief 174 + 366 KB; world.js 582 KB. Painting one scene's textures takes 55–120 ms on the dev Mac (Berlin about
   265 ms), so neighbours are painted in idle time while the reader reads. Checked in the preview at desktop and 375 px.

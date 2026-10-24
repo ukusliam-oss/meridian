@@ -13,22 +13,19 @@ import {
   WebGLRenderer, Scene, PerspectiveCamera, Group, Mesh, SphereGeometry, ShaderMaterial, CanvasTexture, DataTexture, Texture,
   TextureLoader, Vector2, Vector3, Vector4, Color, BufferGeometry, Float32BufferAttribute, LineSegments, LineBasicMaterial,
   TubeGeometry, CatmullRomCurve3, ConeGeometry, MeshBasicMaterial, BackSide, AdditiveBlending, SRGBColorSpace,
-  LinearFilter, NearestFilter, RGFormat, FloatType, Quaternion, Points, InstancedMesh, CylinderGeometry, Matrix4, DynamicDrawUsage,
+  LinearFilter, LinearMipmapLinearFilter, NearestFilter, RGFormat, FloatType, Quaternion, Points, InstancedMesh, CylinderGeometry, Matrix4, DynamicDrawUsage,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+import { R_KM, clamp, smooth, ll, setViewport, placeCamera, footprint, textureSize } from './view.js';
 import { geoInterpolate, geoDistance } from 'd3-geo';
 import { mesh } from 'topojson-client';
 import { DEG, dayNum, PALETTE, WALL_DOWN, featuresOf, countriesAt, runJob } from './paint.js';
 
-export { PALETTE };
-const R_KM = 6371;
-const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
-const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+export { PALETTE, ll };
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-export const ll = (lat, lon, r = 1) => {
-  const p = lat * DEG, l = lon * DEG;
-  return new Vector3(Math.cos(p) * Math.sin(l) * r, Math.sin(p) * r, Math.cos(p) * Math.cos(l) * r);
-};
 const ARROW = { military: '#ff5a4f', people: '#ffd59a', pressure: '#c9b3ff', capital: '#7ef0c2', trade: '#9db7ff' };
 const LINE = { 'iron-curtain': '#dfe6f2', wall: '#ffffff' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -141,11 +138,19 @@ const earthFrag = /* glsl */`
     focus = dat.a * cover;
     return vec4(mix(col.rgb, dat.rgb, cover), max(col.a, cover));
   }
+  // screen pixels across one texel of a texture sampled at uv (large when the camera is much closer than it was made for)
+  float spread(vec2 uv, vec2 size) { vec2 t = uv * size; return 1.0 / max(1e-6, max(length(dFdx(t)), length(dFdy(t)))); }
+  // shaded relief, faded to its mean where one of its texels would cover more than ~2–4 screen pixels: a
+  // blurred blob reads as a smudge, not as terrain
   float relief() {
     vec2 q = (lonlat() - uRelBox.xy) / (uRelBox.zw - uRelBox.xy);
     float e = min(min(q.x, 1.0 - q.x), min(q.y, 1.0 - q.y));
     float w = texture2D(uRelW, vUv).r;
-    return e > 0.0 ? mix(w, texture2D(uRelE, q).r, smoothstep(0.0, 0.04, e)) : w;
+    float r = e > 0.0 ? mix(w, texture2D(uRelE, q).r, smoothstep(0.0, 0.04, e)) : w;
+    // the image's mean (its 1 × 1 mip), so fading out flattens the terrain without changing the overall brightness
+    float avg = e > 0.0 ? textureLod(uRelE, q, 12.0).r : textureLod(uRelW, vUv, 12.0).r;
+    float px = e > 0.0 ? spread(q, vec2(textureSize(uRelE, 0))) : spread(vUv, vec2(textureSize(uRelW, 0)));
+    return mix(r, avg, smoothstep(1.5, 4.0, px));
   }
   void main() {
     float fa, fb;
@@ -161,6 +166,9 @@ const earthFrag = /* glsl */`
     vec3 ocean = mix(uOcean, uOceanLift, 0.5 + 0.5 * n.y) * (0.75 + 0.25 * lit);
     vec3 lc = land.rgb * (1.0 + 0.28 * focus) + uFocus * 0.06 * focus;
     vec3 col = mix(ocean, lc * lit * shade, land.a);
+    // a fine film grain on land, one device pixel per grain, so large fills read as a surface and not as plastic
+    float grain = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
+    col *= 1.0 + (grain - 0.5) * 0.05 * land.a;
     col += uRim * rim * 0.55;
     gl_FragColor = vec4(col, 1.0);
   }`;
@@ -193,6 +201,14 @@ function lineGeometry(lines, lift = 1.0015) {
   }
   const g = new BufferGeometry(); g.setAttribute('position', new Float32BufferAttribute(pos, 3)); return g;
 }
+// Antialiased lines of a fixed width on screen (CSS px), at radius 1: the frame scales them just above the ground, by
+// less the closer the camera is, so in a tilted city view they sit on the painted fills instead of floating over them.
+const fatLines = (lines, color, width) => {
+  const pos = lineGeometry(lines, 1).getAttribute('position').array;
+  const mat = new LineMaterial({ color, linewidth: width, transparent: true, opacity: 0, depthWrite: false, worldUnits: false });
+  const m = new LineSegments2(new LineSegmentsGeometry().setPositions(pos), mat);
+  m.frustumCulled = false; return m;
+};
 const ringsOf = f => {
   const g = f.geometry; if (!g) return [];
   return (g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : []).flat();
@@ -324,7 +340,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
   const scene = new Scene();
   const camera = new PerspectiveCamera(32, 1, 0.0005, 100);
   const globe = new Group(); scene.add(globe);
-  const stats = { paints: [], frames: 0, skipped: 0, frameMs: 0, worstFrameMs: 0, painter: '' };
+  const stats = { paints: [], boxes: {}, frames: 0, skipped: 0, frameMs: 0, worstFrameMs: 0, painter: '' };
   let dirty = true;
 
   const feats = featuresOf(data);
@@ -363,48 +379,63 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
   };
 
   // ── textures: per state a world and a detail texture (painted), plus id textures for data states ──
-  const GW = 2048, DW = phone ? 1536 : 3072; // the world texture is only seen from far away; close-ups use the detail texture
-  const texCache = new Map(); // key → { tex, used }
+  // The detail texture covers what the scene's camera actually shows (screen corners cast onto the globe, see view.js)
+  // with square texels about half a CSS pixel at the target, up to 4096 px a side (2048 on phones). It is worked out
+  // for the screen the page opened on; only a resize that changes the screen a lot paints new textures.
+  const GW = 2048;
+  const MAXT = Math.min(phone ? 2048 : 4096, renderer.capabilities.maxTextureSize), MAXPX = phone ? 2048 * 1280 : 4096 * 2560;
+  const TEXEL = phone ? 0.5 : 0.55; // CSS px per texel
+  let REF = [host.clientWidth || innerWidth, host.clientHeight || innerHeight];
+  const refKey = (w, h) => `${Math.round(w / 120)}x${Math.round(h / 120)}`;
+  const BUDGET = (phone ? 96 : 320) * 2 ** 20; // bytes of painted textures kept on the GPU (mipmaps add a third)
+  const texCache = new Map(); // key → { tex, used, bytes }
   const aniso = renderer.capabilities.getMaxAnisotropy();
   const toTex = (job, out) => {
     let t;
     if (out.ids) {
-      t = new DataTexture(out.ids, job.W, job.H); t.minFilter = t.magFilter = NearestFilter;
+      t = new DataTexture(out.ids, job.W, job.H); t.minFilter = t.magFilter = NearestFilter; t.generateMipmaps = false;
     } else {
+      // mipmaps, so a sharp texture seen from further away (mid-flight, or tilted) does not shimmer
       t = out.bitmap ? new Texture(out.bitmap) : new CanvasTexture(out.canvas);
-      t.colorSpace = SRGBColorSpace; t.anisotropy = aniso; t.minFilter = LinearFilter;
+      t.colorSpace = SRGBColorSpace; t.anisotropy = aniso; t.minFilter = LinearMipmapLinearFilter; t.generateMipmaps = true;
     }
-    t.flipY = false; t.generateMipmaps = false; t.needsUpdate = true; return t;
+    t.flipY = false; t.needsUpdate = true; return t;
   };
   const paint = painter(feats, dataUrl, (job, out, ms, where) => {
-    texCache.set(job.key, { tex: toTex(job, out), used: performance.now() });
-    stats.paints.push({ kind: job.kind, ms: Math.round(ms), where });
+    texCache.set(job.key, { tex: toTex(job, out), used: performance.now(), bytes: job.W * job.H * 4 * (out.ids ? 1 : 4 / 3) });
+    stats.paints.push({ kind: job.kind, ms: Math.round(ms), where, size: `${job.W}x${job.H}` });
     evict(); dirty = true;
   });
   stats.painter = paint.mode;
+  // least recently used first, until the textures fit the budget; the four in use were used this frame and stay
   function evict() {
-    const LIMIT = 14; if (texCache.size <= LIMIT) return;
-    const old = [...texCache.entries()].sort((a, b) => a[1].used - b[1].used);
-    for (const [k, v] of old.slice(0, texCache.size - LIMIT)) { v.tex.dispose(); texCache.delete(k); } // GPU copy only: a texture still bound uploads again
+    let total = 0; for (const v of texCache.values()) total += v.bytes;
+    if (total <= BUDGET) return;
+    for (const [k, v] of [...texCache.entries()].sort((a, b) => a[1].used - b[1].used)) {
+      if (total <= BUDGET || texCache.size <= 4) break;
+      v.tex.dispose(); texCache.delete(k); total -= v.bytes; // GPU copy only: a texture still bound uploads again
+    }
   }
   // what a state needs; equal keys are painted once (the years of one panel share every texture)
   const jobsFor = i => {
     const s = sceneOf(i), data = isData(s);
     // data states draw their focus in the shader and with vector outlines, so the painted layer leaves it out
     const map = { borders: s.map.borders, fill: s.map.fill, city: data ? null : s.map.city, areas: s.map.areas, focus: data ? [] : s.map.focus };
-    const { lat, lon, alt } = s.camera;
-    const half = clamp(alt / 111 * 0.9 + (alt < 300 ? 0.15 : 1.5), 0.25, 32);
-    const box = [lon - half * 2, Math.max(-89, lat - half), lon + half * 2, 0];
-    box[3] = box[1] + (box[2] - box[0]) / 2; // 2:1, so one scale fits both axes
+    const { lat, lon } = s.camera;
+    const fp = footprint(s.camera, REF[0], REF[1]);
+    // the whole globe in view: a hemisphere around the target is enough, at the screen's own density
+    const box = fp.box || [lon - 75, Math.max(-89.5, lat - 60), lon + 75, Math.min(89.5, lat + 60)];
+    const size = textureSize(box, Math.max(0.01, (fp.kmPerPx || 40) * TEXEL), MAXT, MAXPX);
+    stats.boxes[i] = { box: box.map(v => +v.toFixed(2)), size: `${size.W}x${size.H}`, texelKm: +size.texelKm.toFixed(3), kmPerPx: +fp.kmPerPx.toFixed(3) };
     const r = v => +v.toFixed(3);
-    const bk = box.map(r).join(','), mk = JSON.stringify({ ...map, city: null });
+    const bk = `${box.map(r).join(',')}|${size.W}x${size.H}`, mk = JSON.stringify({ ...map, city: null });
     const jobs = {
       g: { kind: 'paint', key: `g|${mk}`, map: { ...map, city: null }, box: [-180, -90, 180, 90], W: GW, H: GW / 2 },
-      d: { kind: 'paint', key: `d|${JSON.stringify(map)}|${bk}`, map, box, W: DW, H: DW / 2 },
+      d: { kind: 'paint', key: `d|${JSON.stringify(map)}|${bk}`, map, box, W: size.W, H: size.H },
     };
     if (data) {
       jobs.ig = { kind: 'ids', key: `ig|${map.borders}`, date: map.borders, box: [-180, -90, 180, 90], W: GW, H: GW / 2 };
-      jobs.id = { kind: 'ids', key: `id|${map.borders}|${bk}`, date: map.borders, box, W: DW, H: DW / 2 };
+      jobs.id = { kind: 'ids', key: `id|${map.borders}|${bk}`, date: map.borders, box, W: size.W, H: size.H };
     }
     return { jobs, box: new Vector4(...box) };
   };
@@ -438,10 +469,12 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
   };
   if (relief) {
     const tl = new TextureLoader();
-    tl.load(relief.world, t => { t.minFilter = LinearFilter; earthU.uRelW.value = t; dirty = true; });
-    tl.load(relief.europe, t => { t.minFilter = LinearFilter; earthU.uRelE.value = t; dirty = true; });
+    const relTex = t => { t.minFilter = LinearMipmapLinearFilter; t.anisotropy = aniso; return t; };
+    tl.load(relief.world, t => { earthU.uRelW.value = relTex(t); dirty = true; });
+    tl.load(relief.europe, t => { earthU.uRelE.value = relTex(t); dirty = true; });
   }
-  const earth = new Mesh(new SphereGeometry(1, 160, 120), new ShaderMaterial({ uniforms: earthU, vertexShader: shellVert, fragmentShader: earthFrag }));
+  // fine enough that the flat facets sag at most ~120 m (~1.2 km with the old 160 × 120), so city lines stay on their fills
+  const earth = new Mesh(phone ? new SphereGeometry(1, 384, 192) : new SphereGeometry(1, 512, 256), new ShaderMaterial({ uniforms: earthU, vertexShader: shellVert, fragmentShader: earthFrag }));
   earth.rotation.y = -Math.PI / 2; // equirectangular u=0 at lon -180
   const air = new Mesh(new SphereGeometry(1.06, 96, 64), new ShaderMaterial({
     uniforms: { uRim: { value: rim } }, vertexShader: shellVert, fragmentShader: airFrag,
@@ -466,7 +499,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
     if (borderSets.has(date)) return borderSets.get(date);
     const lines = [];
     for (const f of countriesAt(countries, date)) lines.push(...ringsOf(f));
-    const m = new LineSegments(lineGeometry(lines), new LineBasicMaterial({ color: values ? '#0b0e15' : '#c8cde0', transparent: true, opacity: 0, depthWrite: false }));
+    const m = fatLines(lines, values ? '#0b0e15' : '#c8cde0', 1.25);
     globe.add(m); borderSets.set(date, m); return m;
   };
 
@@ -484,8 +517,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
     });
     if (isData(s) && (s.map.focus || []).length) {
       const rings = countriesAt(countries, s.map.borders).filter(f => s.map.focus.includes(f.properties.key)).flatMap(ringsOf);
-      const mat = new LineBasicMaterial({ color: PALETTE.focus, transparent: true, opacity: 0, depthWrite: false });
-      const m = new LineSegments(lineGeometry(rings, 1.0018), mat); g.add(m); items.push({ type: 'outline', m, mat });
+      const m = fatLines(rings, PALETTE.focus, 2); g.add(m); items.push({ type: 'outline', m, mat: m.material });
     }
     (s.map.lines || []).forEach(l => {
       if (l.kind === 'wall' && berlin) {
@@ -539,7 +571,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
         it.m.userData.mat.uniforms.uOpacity.value = opacity;
         it.m.userData.head.material.opacity = opacity * smooth(0.92, 1, it.m.userData.mat.uniforms.uDraw.value);
       } else if (it.type === 'outline') {
-        it.mat.opacity = opacity * 0.9;
+        it.mat.opacity = opacity * 0.9; it.mat.resolution = lineRes; it.m.scale.setScalar(lineLift);
       } else {
         it.mat.uniforms.uDraw.value = reduced ? 1 : clamp(draw * 1.1);
         it.mat.uniforms.uOpacity.value = opacity * 0.95 * it.k;
@@ -660,34 +692,16 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
 
   // ── camera ────────────────────────────────────────────────────────────────
   let W = 1, H = 1;
-  const up = new Vector3(0, 1, 0), tmp = new Vector3();
-  function placeCamera(a, b, t) {
-    const da = ll(a.lat, a.lon), db = ll(b.lat, b.lon);
-    const ang = da.angleTo(db);
-    const dir = ang < 1e-6 ? da : da.clone().multiplyScalar(Math.sin((1 - t) * ang)).add(db.clone().multiplyScalar(Math.sin(t * ang))).divideScalar(Math.sin(ang));
-    dir.normalize();
-    const travelKm = ang * R_KM;
-    const lift = 1 + Math.min(2.2, travelKm / Math.max(a.alt, b.alt, 400) * 0.35) * Math.sin(Math.PI * t);
-    const alt = Math.exp(Math.log(a.alt) * (1 - t) + Math.log(b.alt) * t) * lift * (W / H < 0.8 ? 1.7 : 1); // tall phones see less width
-    const d = 1 + alt / R_KM;
-    const tilt = (alt < 2500 ? 24 * (1 - alt / 2500) : 0) * DEG; // lean towards the horizon close to the ground
-    const south = new Vector3().crossVectors(dir, new Vector3().crossVectors(up, dir)).normalize().negate();
-    camera.position.copy(dir).multiplyScalar(d).addScaledVector(south, Math.tan(tilt) * (d - 1) * 1.2);
-    camera.up.copy(up);
-    camera.lookAt(tmp.copy(dir).multiplyScalar(1 - smooth(2500, 6000, alt)));
-    camera.near = Math.max(0.000002, (d - 1) * 0.15); camera.far = d + 3; camera.updateProjectionMatrix();
-    return alt;
-  }
+  const tmp = new Vector3(), lineRes = new Vector2(1, 1);
+  let lineLift = 1.0015;
 
   function resize() {
     W = host.clientWidth || innerWidth; H = host.clientHeight || innerHeight;
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, phone ? 1.5 : 1.75));
     renderer.setSize(W, H, false);
-    camera.aspect = W / H;
-    // keep the subject clear of the text: right of the panel on desktop, above the panel on phones
-    const wide = W > 900;
-    camera.setViewOffset(W, H, wide ? -W * 0.2 : 0, wide ? 0 : H * 0.18, W, H);
-    camera.updateProjectionMatrix();
+    setViewport(camera, W, H);
+    lineRes.set(W, H);
+    if (refKey(W, H) !== refKey(...REF)) { REF = [W, H]; stateCache.clear(); } // the next frames ask for textures that fit
     for (const list of markerEls.values()) list.forEach(m => { m.w = 0; });
     dirty = true;
   }
@@ -732,7 +746,8 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
     const tt = reduced ? (f < 0.5 ? 0 : 1) : ease(smooth(0.08, 0.92, f));
     // the hero drifts slowly until the reader starts scrolling
     const heroCam = { ...hero.camera, lon: hero.camera.lon + (reduced ? 0 : Math.sin(time * 0.06) * 12) };
-    const alt = placeCamera(i < 0 ? heroCam : sA.camera, j < 0 ? heroCam : sB.camera, tt);
+    const alt = placeCamera(camera, i < 0 ? heroCam : sA.camera, j < 0 ? heroCam : sB.camera, tt, W, H);
+    lineLift = 1 + clamp(alt / R_KM * 0.002, 1e-6, 0.0015);
 
     // textures: keep the last complete state while a new one is painting, so nothing ever flashes blank
     const A = texturesOf(i, true) || lastA || lastB, B = texturesOf(j, true) || A;
@@ -750,7 +765,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, v
     earthU.uHatch.value = 1.2e6 / Math.max(60, alt); // stripes about six pixels apart at any height
 
     const ba = bordersFor(sA.map.borders), bb = bordersFor(sB.map.borders);
-    for (const m of borderSets.values()) m.material.opacity = 0;
+    for (const m of borderSets.values()) { m.material.opacity = 0; m.material.resolution = lineRes; m.scale.setScalar(lineLift); }
     const cityA = sA.map.city ? 0.4 : 1, cityB = sB.map.city ? 0.4 : 1;
     ba.material.opacity += 0.28 * (1 - mix) * cityA; bb.material.opacity += 0.28 * mix * cityB;
 
