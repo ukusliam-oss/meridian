@@ -125,7 +125,7 @@
 
 .sc__chart { margin-top: 20px; }
 .sc__chart svg { width: 100%; height: auto; display: block; overflow: visible; }
-.sc__chart .mono { color: rgb(255 255 255 / .66); font-size: 11.5px; }
+.sc__chart .mono { color: rgb(255 255 255 / .55); font-size: 10.5px; }
 
 /* ── scene graphics: chart, comparison, cascade ─────────────────────── */
 .sc__chart .bar { transform-box: fill-box; transform-origin: 50% 100%; transform: scaleY(0); transition: transform .9s var(--ease) calc(var(--k) * 45ms); }

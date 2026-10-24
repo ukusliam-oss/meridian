@@ -98,8 +98,8 @@ function chart(c, id) {
   const bars = c.series.map(([x, v], k) => {
     const h = (v / max) * (H - 28);
     const wall = x >= 1962;
-    return `<rect class="bar" style="--k:${k}" x="${(k * bw + 3).toFixed(1)}" y="${(H - 18 - h).toFixed(1)}" width="${(bw - 6).toFixed(1)}" height="${h.toFixed(1)}" rx="2" style="fill:${wall ? '#ffffff' : 'var(--acc)'}" opacity="${wall ? .55 : .9}"/>`
-      + (k % 2 === 0 || wall ? `<text x="${(k * bw + bw / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle" class="mono" fill="rgba(255,255,255,.66)" font-size="10">${String(x).slice(2)}</text>` : '');
+    return `<rect class="bar" style="--k:${k};fill:${wall ? '#ffffff' : 'var(--acc)'}" x="${(k * bw + 3).toFixed(1)}" y="${(H - 18 - h).toFixed(1)}" width="${(bw - 6).toFixed(1)}" height="${h.toFixed(1)}" rx="2" opacity="${wall ? .55 : .9}"/>`
+      + (k % 2 === 0 || wall ? `<text x="${(k * bw + bw / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle" class="mono" fill="rgba(255,255,255,.55)" font-size="10">${String(x).slice(2)}</text>` : '');
   }).join('');
   const peak = c.series.reduce((a, b) => (b[1] > a[1] ? b : a));
   return `<figure class="sc__chart"><figcaption class="mono">${esc(c.title)} · ${esc(c.unit)}</figcaption>
