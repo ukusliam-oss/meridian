@@ -340,7 +340,12 @@ const ribbon = $('[data-ribbon]'), track = $('[data-track]');
 track.innerHTML = scenes.map((s, i) => `<i class="ribbon__tick${parts.some(p => p.first === i) ? ' is-part' : ''}" style="left:${((dayNum(s.date) - T0) / (T1 - T0) * 100).toFixed(2)}%"></i>`).join('') + '<i class="ribbon__needle" data-needle></i>';
 const needle = $('[data-needle]'), yearEl = $('[data-year]'), labelEl = $('[data-label]');
 if ($('[data-ends]')) $('[data-ends]').innerHTML = `<span>${CFG.ribbon[0].slice(0, 4)}</span><span>${+CFG.ribbon[1].slice(0, 4) - 1}</span>`;
-const pillPart = $('[data-pill-part]'), pillDate = $('[data-pill-date]'), orb = $('[data-orb]');
+const pillPart = $('[data-pill-part]'), pillDate = $('[data-pill-date]');
+const orbArc = $('[data-orb]'), orbHead = $('[data-orb-head]'), orbBall = $('[data-orb-ball]');
+// a dot on the orb's ring where each part starts (part k starts at k / N of the way round, from the top)
+const orbTicks = parts.filter(p => p.first > 0).map(p => p.first / N);
+$('[data-orb-ticks]').innerHTML = orbTicks.map(t => { const a = t * 2 * Math.PI - Math.PI / 2; return `<circle class="pillnav__tick" cx="${(20 + 18 * Math.cos(a)).toFixed(2)}" cy="${(20 + 18 * Math.sin(a)).toFixed(2)}" r="1.1"/>`; }).join('');
+const tickEls = $$('.pillnav__tick');
 // pill labels roll like their button text: the old line slides up and out as the new one comes up from below
 for (const el of [pillPart, pillDate]) { el.classList.add('pillnav__roll'); el.innerHTML = `<span>${el.innerHTML}</span>`; }
 function roll(el, html) {
@@ -351,8 +356,7 @@ function roll(el, html) {
   gsap.fromTo(old, { yPercent: 0 }, { yPercent: -120, duration: 0.5, ease: 'expo.out', onComplete: () => old.remove() });
   gsap.fromTo(nu, { yPercent: 110 }, { yPercent: 0, duration: 0.5, ease: 'expo.out' });
 }
-const ORB = 2 * Math.PI * 22;
-let lastShown = -2;
+let lastShown = -2, lastFr = -1;
 function updateUI(p) {
   const i = Math.max(0, Math.floor(p)), f = p - Math.floor(p);
   const near = p < 0 ? 0 : Math.min(N - 1, Math.round(p));
@@ -369,6 +373,7 @@ function updateUI(p) {
     lastShown = key;
     const s = scenes[near];
     labelEl.textContent = s.dateLabel;
+    if (key >= 0 && !reduced) gsap.fromTo(orbBall, { scale: 0.84 }, { scale: 1, duration: 0.7, ease: 'back.out(2.4)', overwrite: true });
     roll(pillPart, esc(p < -0.5 ? CFG.pill.part : `${s.part} · ${String(near + 1).padStart(2, '0')}/${N}`));
     roll(pillDate, p < -0.5 ? CFG.pill.date : esc(s.dateLabel));
     $$('[data-go]', menu).forEach(a => a.setAttribute('aria-current', +a.dataset.go === near));
@@ -376,7 +381,14 @@ function updateUI(p) {
     // paint the neighbouring scenes while the reader is reading, so no paint lands mid-flight
     if (world) [base[near + 1], base[near] + span[near] - 1, base[near - 1], base[near + 2]].filter(k => k != null).forEach((k, n) => idle(() => world.prepare(k), n * 120));
   }
-  orb.style.strokeDashoffset = (ORB * (1 - Math.max(0, (p + 1) / N))).toFixed(1);
+  const fr = Math.min(1, Math.max(0, (p + 1) / N));
+  if (Math.abs(fr - lastFr) > 1e-4) {
+    lastFr = fr;
+    const on = fr > 0.004 ? 1 : 0;
+    orbArc.style.strokeDashoffset = (1 - fr).toFixed(4); orbArc.style.opacity = on;
+    orbHead.style.transform = `rotate(${(fr * 360).toFixed(2)}deg)`; orbHead.style.opacity = on;
+    tickEls.forEach((el, k) => el.classList.toggle('is-past', fr >= orbTicks[k] - 1e-4));
+  }
 }
 
 // ── globe ─────────────────────────────────────────────────────────────────

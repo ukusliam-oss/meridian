@@ -793,6 +793,7 @@ body:not([data-subject]) .eyebrow { color: var(--text-3); }
   border: 1px solid color-mix(in oklab, var(--accent) 28%, transparent); box-shadow: inset 0 1px 0 rgb(255 255 255 / .06);
   transition: transform .6s var(--ease), border-color .3s; }
 .chapter-card:hover { transform: translateY(-4px); border-color: color-mix(in oklab, var(--accent) 60%, transparent); }
+[data-subject="history"] .chapter-card { --accent: var(--brand); --accent-deep: var(--brand-deep); } /* matches the violet History chapters */
 .chapter-card--paper { background: radial-gradient(120% 120% at 0% 100%, rgb(242 236 223 / .14), rgb(12 13 20 / .94) 60%), #0a0b10; }
 .chapter-card__tag { font: 500 var(--fs-label)/1.3 var(--mono); letter-spacing: .02em; text-transform: uppercase; color: rgb(255 255 255 / .74); }
 .chapter-card__title { font-family: var(--serif); font-size: clamp(2rem, 1.1rem + 2.6vw, 3.4rem); line-height: .9; text-transform: uppercase; }
