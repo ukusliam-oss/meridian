@@ -48,8 +48,11 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - `history/kq6.html` — KQ6 chapter: 33 scenes over one globe. `assets/js/chapter.js` renders the scenes from
   `assets/js/data/history/kq6.js` and turns scroll into globe progress (a scene holds while its panel is on the reading
   line; the camera flies in the gaps). `assets/css/chapter.css` adds the globe layer, scene panels, pill navigator and
-  scene menu on top of site.css's type system (`--acc` = `--accent`). History is violet everywhere (`--hist` = `--brand`),
-  Economics green, Geography blue. The pill ends in their progress ring (a 10% lilac disc, a
+  scene menu on top of site.css's type system (`--acc` = `--accent`). History is amber on the home page, the globe and its hub
+  (`--hist`) and violet inside its chapters (`--brand`); the crossing is designed: the hub's History chapter cards are
+  amber at the rim and violet within, the chapter loader turns "History" and its line from amber through rose to
+  violet as the map loads (`--load`, an @property set by `setPct`, mixed in oklch), and the opening italic keeps an
+  amber glint. Economics is green, Geography blue, inside and out. The pill ends in their progress ring (a 10% lilac disc, a
   faint track, a white bar filling from the top as the chapter is read, an arrow icon in the middle).
 - `history/kq6-paper2.html` + `assets/js/paper2.js` — Paper 2 room from `kq6-paper2.js` (sources on paper cards).
   The History hub links both through `CHAPTERS` in `tools/pages.py`.
@@ -106,7 +109,7 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   Inter (48 KB) and Instrument Serif (2 × 21 KB).
 - Contrast (2026-10-24, `tools/contrast.js`, folded content opened): home and the three hubs in both themes and the
   three chapter pages pass WCAG AA; KQ6 checked 1,105 text elements, the Economics chapter 1,158. Light theme tokens
-  were darkened for it (`--econ` #087a50, `--good`/`--bad`, `--text-2` .76).
+  were darkened for it (`--hist` #995700, `--econ` #087a50, `--good`/`--bad`, `--text-2` .76).
 - Checked in the preview on 2026-10-22: home lenses, all three labs and every mode, flashcards,
   quiz, light theme, 375 px phone layout (no horizontal scroll). No console errors.
 - Where practice marks come from (checked 2026-10-22; each data file's `source` shows it on the

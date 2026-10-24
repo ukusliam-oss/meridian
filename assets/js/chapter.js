@@ -388,7 +388,7 @@ const idle = (f, delay = 0) => setTimeout(() => (window.requestIdleCallback ? re
 let world = null;
 let hero = null;
 const loader = $('[data-loader]'), pct = $('[data-pct]'), bar = $('[data-bar]');
-const setPct = v => { const n = Math.round(v * 100); pct.textContent = String(n).padStart(3, '0') + '%'; bar.style.width = n + '%'; };
+const setPct = v => { const n = Math.round(v * 100); pct.textContent = String(n).padStart(3, '0') + '%'; bar.style.width = n + '%'; loader.style.setProperty('--load', v.toFixed(3)); };
 
 async function loadBorders() {
   const res = await fetch(CFG.borders);

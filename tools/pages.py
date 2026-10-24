@@ -10,7 +10,7 @@ ICON = {
 }
 svg = lambda k, w=20: f'<svg viewBox="0 0 24 24" width="{w}" height="{w}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{ICON[k]}</svg>'
 LOGO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><ellipse cx="12" cy="12" rx="3.8" ry="9.2" style="stroke:var(--accent, currentColor)"/><path d="M2.8 12h18.4" opacity=".5"/></svg>'
-FAV = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b693ff' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cellipse cx='12' cy='12' rx='4' ry='9.5'/%3E%3C/svg%3E"
+FAV = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f0b45a' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cellipse cx='12' cy='12' rx='4' ry='9.5'/%3E%3C/svg%3E"
 SUBJ = [('history', 'History', 'hist'), ('economics', 'Economics', 'econ'), ('geography', 'Geography', 'geo')]
 
 def shell(page, title, desc, main, script, subject=''):

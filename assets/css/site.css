@@ -32,8 +32,8 @@
   --bg: #07080b; --bg-2: #0b0d11; --surface: #101318; --surface-2: #161a20; --surface-3: #1d222a;
   --line: rgb(255 255 255 / .075); --line-2: rgb(255 255 255 / .14); --line-3: rgb(255 255 255 / .24);
   --text: #f3f1eb; --text-2: rgb(243 241 235 / .74); --text-3: rgb(243 241 235 / .58);
-  --hist: #b693ff; --econ: #46d6a0; --geo: #5fb0ff;
-  --hist-deep: #6d3fd0; --econ-deep: #0f7a58; --geo-deep: #1f5fae;
+  --hist: #f0b45a; --econ: #46d6a0; --geo: #5fb0ff;
+  --hist-deep: #8f540e; --econ-deep: #0f7a58; --geo-deep: #1f5fae;
   --brand: #b693ff; --brand-deep: #6d3fd0; --brand-glow: #9047ff;
   --rim: linear-gradient(var(--btn-stroke-angle, 90deg), #2d257d 0%, #8e2de2 4%, #f5efff 31%, #f5efff 60%, #cbd5e1 85%, #8e2de2 100%);
   --good: #46d6a0; --bad: #ff7a6b;
@@ -46,8 +46,8 @@
   --bg: #f6f4ef; --bg-2: #efece5; --surface: #ffffff; --surface-2: #f8f6f2; --surface-3: #efece6;
   --line: rgb(22 20 12 / .085); --line-2: rgb(22 20 12 / .15); --line-3: rgb(22 20 12 / .26);
   --text: #15140f; --text-2: rgb(21 20 15 / .76); --text-3: rgb(21 20 15 / .64);
-  --hist: #6d3fd0; --econ: #087a50; --geo: #1a68cf;
-  --hist-deep: #5a2fc2; --econ-deep: #066343; --geo-deep: #1a5bb5;
+  --hist: #995700; --econ: #087a50; --geo: #1a68cf;
+  --hist-deep: #7a4508; --econ-deep: #066343; --geo-deep: #1a5bb5;
   --brand: #6d3fd0; --brand-deep: #5a2fc2; --brand-glow: #9047ff;
   --good: #087a50; --bad: #b8322a;
   --glass: rgb(250 248 244 / .74);
@@ -256,7 +256,7 @@ body:not([data-subject]) .eyebrow { color: var(--text-3); }
 .globe-label--l > span { transform: translate(calc(-100% - 12px), -50%); }
 .globe-label b { font-weight: 500; color: #fff; }
 .globe-label i { font-style: normal; color: rgb(255 255 255 / .66); font-variant-numeric: tabular-nums; }
-.globe-label.is-0 b { color: #d9c8ff; }
+.globe-label.is-0 b { color: #ffd59a; }
 .globe-label.is-1 b { color: #98f3cd; }
 .globe-label.is-2 b { color: #a9d4ff; }
 .scope__content { position: relative; margin-top: -100vh; margin-top: -100svh; pointer-events: none; }
@@ -830,6 +830,21 @@ body:not([data-subject]) .eyebrow { color: var(--text-3); }
   border: 1px solid color-mix(in oklab, var(--accent) 28%, transparent); box-shadow: inset 0 1px 0 rgb(255 255 255 / .06);
   transition: transform .6s var(--ease), border-color .3s; }
 .chapter-card:hover { transform: translateY(-4px); border-color: color-mix(in oklab, var(--accent) 60%, transparent); }
+/* History's chapter cards are the door from the amber hub into the violet chapters: the rim runs from History amber
+   at the top left to violet, the inside is the chapter's violet, and the hub's amber light spills in at the corner,
+   brighter on hover. */
+[data-subject="history"] .chapter-card { --accent: var(--brand); --accent-deep: var(--brand-deep); border-color: transparent;
+  background: radial-gradient(120% 120% at 100% 0%, color-mix(in oklab, var(--brand-deep) 60%, transparent), rgb(12 13 20 / .92) 58%) padding-box,
+    linear-gradient(#0a0b10, #0a0b10) padding-box,
+    linear-gradient(135deg, var(--hist) 0%, color-mix(in oklab, var(--hist) 45%, var(--brand)) 30%, color-mix(in oklab, var(--brand) 55%, transparent) 65%, rgb(255 255 255 / .08) 100%) border-box; }
+[data-subject="history"] .chapter-card--paper { background: radial-gradient(120% 120% at 0% 100%, rgb(242 236 223 / .14), rgb(12 13 20 / .94) 60%) padding-box,
+    linear-gradient(#0a0b10, #0a0b10) padding-box,
+    linear-gradient(135deg, var(--hist) 0%, color-mix(in oklab, var(--hist) 45%, var(--brand)) 30%, color-mix(in oklab, var(--brand) 55%, transparent) 65%, rgb(255 255 255 / .08) 100%) border-box; }
+[data-subject="history"] .chapter-card::before { content: ""; position: absolute; left: -30%; top: -45%; width: 75%; height: 85%; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--hist) 30%, transparent), transparent); opacity: .55; transition: opacity .7s var(--ease), transform .9s var(--ease); }
+[data-subject="history"] .chapter-card:hover::before { opacity: 1; transform: translate(8%, 8%); }
+[data-subject="history"] .chapter-card > * { position: relative; }
+[data-subject="history"] .chapter-card__tag { color: color-mix(in oklab, var(--hist) 75%, #fff); }
 .chapter-card--paper { background: radial-gradient(120% 120% at 0% 100%, rgb(242 236 223 / .14), rgb(12 13 20 / .94) 60%), #0a0b10; }
 .chapter-card__tag { font: 500 var(--fs-label)/1.3 var(--mono); letter-spacing: .02em; text-transform: uppercase; color: rgb(255 255 255 / .74); }
 .chapter-card__title { font-family: var(--serif); font-size: clamp(2rem, 1.1rem + 2.6vw, 3.4rem); line-height: .9; text-transform: uppercase; }
