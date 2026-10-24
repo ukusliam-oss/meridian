@@ -266,7 +266,7 @@ function painter(feats, dataUrl, onDone) {
         if (job) onDone(job, m.bitmap ? { bitmap: m.bitmap } : { ids: m.ids }, m.ms, 'worker');
       };
       worker.onerror = fallBack;
-      worker.postMessage({ type: 'init', url: new URL(dataUrl, location.href).href });
+      worker.postMessage({ type: 'init', url: new URL(dataUrl, location.href).href, focus: PALETTE.focus });
     } catch { worker = null; mode = 'main'; }
   }
   function fallBack() {

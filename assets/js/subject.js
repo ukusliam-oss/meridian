@@ -3,6 +3,7 @@ import { boot, subnav, $, reduced, gsap, icons } from './core.js';
 import { examAnatomy, topicMap, technique, commandWords, flashcards, quiz, examplesTracker } from './ui.js';
 import { heroArt } from './visuals.js';
 import { practice } from './practice.js';
+import { glassChrome } from './glass.js';
 
 const id = document.body.dataset.subject;
 const [{ default: d }, { default: pr }] = await Promise.all([import(`./data/${id}.js`), import(`./data/practice-${id}.js`)]);
@@ -25,8 +26,8 @@ $('#content').insertAdjacentHTML('beforeend', `
   ${section('technique', 'How to answer questions', d.techHead, d.techLede)}
   ${section('practice', 'Written practice', pr.head, pr.lede)}
   ${section('words', 'Key skills', d.wordsHead, d.wordsLede)}
-  ${section('cards', 'Flashcards', 'Key terms', `${d.cards.length} key terms. Try to recall the definition before you turn the card over. Swipe right if you know it and left if you are still learning it. Your progress is saved on this device.`)}
-  ${section('quiz', 'Practice questions', 'Quick quiz', 'Ten multiple-choice questions on this subject. Each answer comes with an explanation. A new set of questions is chosen each time.')}
+  ${section('cards', 'Flashcards', '<em>Key</em>terms', `${d.cards.length} key terms. Try to recall the definition before you turn the card over. Swipe right if you know it and left if you are still learning it. Your progress is saved on this device.`)}
+  ${section('quiz', 'Practice questions', '<em>Quick</em>quiz', 'Ten multiple-choice questions on this subject. Each answer comes with an explanation. A new set of questions is chosen each time.')}
   <section class="section section--tight"><div class="wrap">
     <a class="card next" href="${nid}.html" data-spot data-reveal style="--accent:var(--${ncolor})">
       <div style="display:grid;gap:14px"><p class="eyebrow">Next subject: ${ncode}</p><h2 class="h1">${nname}</h2></div>
@@ -48,4 +49,5 @@ lab.mount(m('lab'), d.lab);
 heroArt($('[data-art]'), id, d);
 boot();
 subnav($('.subnav'));
+glassChrome();
 if (!reduced) gsap.from('.s-hero .lede, .s-hero__stats > div, .s-hero .eyebrow, .s-hero__code', { y: 24, opacity: 0, duration: 1.2, stagger: 0.08, delay: 0.25 });

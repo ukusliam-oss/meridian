@@ -150,25 +150,25 @@ home_main = f'''
 </div>
 
 <section class="section" id="subjects"><div class="wrap">
-  <header class="section-head"><p class="eyebrow">Subjects</p><h2 class="h2" data-split>Choose a subject</h2></header>
+  <header class="section-head"><p class="eyebrow">Subjects</p><h2 class="h2" data-split><em>Choose</em>a subject</h2></header>
   <div class="doors">{doors}</div>
 </div></section>
 
 <section class="section" id="changes" style="background:var(--bg-2)"><div class="wrap">
-  <header class="section-head section-head--split"><div style="display:grid;gap:20px"><p class="eyebrow">Syllabus changes</p><h2 class="h2" data-split>What has changed for 2027</h2></div>
+  <header class="section-head section-head--split"><div style="display:grid;gap:20px"><p class="eyebrow">Syllabus changes</p><h2 class="h2" data-split><em>What has changed</em>for 2027</h2></div>
     <p class="lede" data-reveal>Economics and Geography have revised syllabuses for exams from 2027, with changes to the papers. History has been updated, but the content and papers are mostly the same. Check that your revision materials match the syllabus you are taking.</p></header>
   <div class="changes">{changes}</div>
 </div></section>
 
 <section class="section" id="ladder"><div class="wrap">
-  <header class="section-head section-head--split"><div style="display:grid;gap:20px"><p class="eyebrow">Exam technique</p><h2 class="h2" data-split>Command words</h2></div>
+  <header class="section-head section-head--split"><div style="display:grid;gap:20px"><p class="eyebrow">Exam technique</p><h2 class="h2" data-split><em>Command</em>words</h2></div>
     <p class="lede" data-reveal>The command word tells you what kind of answer to give. In all three subjects, questions range from recalling knowledge to making a judgement. Select a level to see example questions.</p></header>
   <div class="ladder" data-reveal></div>
   <div class="ladder-detail" aria-live="polite"></div>
 </div></section>
 
 <section class="section" id="daily" style="background:var(--bg-2)"><div class="wrap">
-  <header class="section-head section-head--split"><div style="display:grid;gap:20px"><p class="eyebrow">Daily quiz</p><h2 class="h2" data-split>Today's six questions</h2></div>
+  <header class="section-head section-head--split"><div style="display:grid;gap:20px"><p class="eyebrow">Daily quiz</p><h2 class="h2" data-split><em>Today's</em>six questions</h2></div>
     <p class="lede" data-reveal>Two questions from each subject. Everyone gets the same six questions today, so you can compare scores with your classmates. After that, each set is chosen at random.</p></header>
   <div data-mount="daily" data-reveal></div>
 </div></section>'''

@@ -2,7 +2,7 @@
 // Assessment facts are from the syllabus; notes, examples and questions are our own wording.
 export default {
   id: 'economics', code: '0455', name: 'Economics', color: 'econ',
-  examHead: 'How Economics 0455 is examined',
+  examHead: '<em>How</em>Economics 0455 is examined',
   examLede: 'All candidates take two papers. From 2027, Paper 1 has 40 multiple-choice questions in 1 hour and Paper 2 is worth 80 marks in 2 hours.',
   papers: [
     {
@@ -34,7 +34,7 @@ export default {
     { id: 'AO3', name: 'Evaluation', w: 10, text: 'Weigh up arguments and reach a supported conclusion. Tested in Paper 2 only.' },
   ],
 
-  topicsHead: 'Syllabus content',
+  topicsHead: '<em>Syllabus</em>content',
   topicsLede: 'The syllabus has six topics. Open a topic to see the content for 2027. Content that is new to the 2027 syllabus is labelled.',
   topics: {
     groups: [
@@ -99,7 +99,7 @@ export default {
 
   lab: {
     kind: 'supply-demand', nav: 'Diagram',
-    head: 'Interactive supply and demand diagram',
+    head: '<em>Interactive</em>supply and demand diagram',
     lede: 'This diagram shows the market for coffee. Select a change in demand or supply to see how the curves shift and how price and quantity change. The steps of the analysis are shown next to the diagram.',
     market: 'coffee',
     demand: [
@@ -119,7 +119,7 @@ export default {
     ],
   },
 
-  techHead: 'Exam technique',
+  techHead: '<em>Exam</em>technique',
   techLede: 'Almost half of the marks are for analysis (AO2). To analyse, link each point to the next so that you show a clear chain of reasoning.',
   technique: [
     {
@@ -186,7 +186,7 @@ export default {
     },
   ],
 
-  wordsHead: 'Command words',
+  wordsHead: '<em>Command</em>words',
   wordsLede: 'The command word tells you what the question is testing and how much you need to write. The 2027 syllabus uses nine command words.',
   words: [
     { w: 'Identify', depth: 1, means: 'Name, select or recognise something, often from data.', do: 'A word or short phrase is enough.' },

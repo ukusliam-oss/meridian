@@ -1,6 +1,6 @@
 // Paint worker: keeps texture painting (55–265 ms a scene) off the main thread, so scrolling never waits for it.
 // It fetches and parses the same topology as the page (a cache hit), then answers paint and id jobs.
-import { featuresOf, runJob } from './paint.js';
+import { PALETTE, featuresOf, runJob } from './paint.js';
 
 let feats = null;
 const queue = [];
@@ -11,6 +11,7 @@ const run = job => {
 };
 onmessage = async ({ data: msg }) => {
   if (msg.type === 'init') {
+    if (msg.focus) PALETTE.focus = msg.focus; // the chapter accent, set on the page's copy of the palette
     try {
       const topo = await (await fetch(msg.url)).json();
       feats = featuresOf(topo);

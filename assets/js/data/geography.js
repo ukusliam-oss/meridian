@@ -2,7 +2,7 @@
 // Assessment facts are from the syllabus; notes, example ideas and questions are our own wording.
 export default {
   id: 'geography', code: '0460', name: 'Geography', color: 'geo',
-  examHead: 'How Geography 0460 is examined',
+  examHead: '<em>How</em>Geography 0460 is examined',
   examLede: 'All candidates take Paper 1 (Physical Geography) and Paper 2 (Human Geography), and either Component 3 (Coursework) or Paper 4 (Geographical Investigations). There is no longer a separate skills paper.',
   papers: [
     {
@@ -48,7 +48,7 @@ export default {
     { id: 'AO3', name: 'Evaluation and decision-making', w: 20, text: 'Evaluate strategies, weigh up impacts and reach conclusions.' },
   ],
 
-  topicsHead: 'Syllabus content',
+  topicsHead: '<em>Syllabus</em>content',
   topicsLede: 'The 2027 syllabus has ten topics: five physical and five human. Climate change is a new topic. Settlement, water and weather have been removed. Each topic includes how people manage the environment and whether this is sustainable.',
   topics: {
     groups: [
@@ -133,7 +133,7 @@ export default {
     ],
   },
 
-  examplesHead: 'Detailed specific examples',
+  examplesHead: '<em>Detailed</em>specific examples',
   examplesLede: 'The syllabus requires one detailed specific example for each of the 16 areas below. Your teacher chooses which examples you study. Each example needs named places, dates and figures. Cambridge recommends examples from 2000 to the present day.',
   examples: [
     { code: '1.3.8', title: 'A river flood', needs: ['The causes and impacts of a flood on a named river', 'Strategies used to manage the flooding, including sustainable ones'], ideas: 'Indus (Pakistan, 2022); River Severn or the Somerset Levels (UK); Yangtze (China).' },
@@ -156,7 +156,7 @@ export default {
 
   lab: {
     kind: 'dtm', nav: 'DTM',
-    head: 'The demographic transition model',
+    head: '<em>The demographic</em>transition model',
     lede: 'Move the slider through stages 1 to 5, or press play. The population pyramid changes to show the population structure at each stage.',
     stages: [
       { n: 1, name: 'High fluctuating', text: 'Birth rates and death rates are both high, at around 35–40 per 1,000, and they fluctuate. Population growth is slow.', why: 'There is no birth control, children are needed to work, and infant mortality is high. Healthcare, hygiene and food supply are poor.', eg: 'No countries are in this stage today. It applies only to some isolated communities.' },
@@ -169,7 +169,7 @@ export default {
     strengths: ['It is a simple model for comparing countries.', 'It shows how population change is linked to development.'],
   },
 
-  techHead: 'Exam technique',
+  techHead: '<em>Exam</em>technique',
   techLede: 'High-scoring answers in Geography use named places, accurate figures and a clear judgement. These guides show how to include all three.',
   technique: [
     {
@@ -231,7 +231,7 @@ export default {
     },
   ],
 
-  wordsHead: 'Command words',
+  wordsHead: '<em>Command</em>words',
   wordsLede: 'Geography uses more command words than History or Economics. A common mistake is to explain when the question asks you to describe, or to describe when it asks you to assess.',
   words: [
     { w: 'Identify', depth: 1, means: 'Name, select or recognise something, often from a resource.', do: 'A word or short phrase is enough.' },

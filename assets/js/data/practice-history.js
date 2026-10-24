@@ -3,7 +3,7 @@
 // 2027–2028 syllabus gives only the (a)/(b)/(c) structure. Questions and answers are our own wording.
 export default {
   id: 'history',
-  head: 'Paper 1 practice: structured questions',
+  head: '<em>Paper 1 practice:</em>structured questions',
   lede: 'Eight sets of Paper 1 questions on the Option B key questions and depth study B (Germany). Each set has a 4-mark (a), a 6-mark (b) and a 10-mark (c), with a mark scheme for every part and two example answers for part (c).',
   how: 'Choose a set. Write your answer on paper, or plan it in your head, then open the mark scheme for each part. The times are a guide based on the marks. Nothing here is saved.',
   source: `<p><b>Marks per part.</b> The 2027–2028 syllabus says that each Paper 1 question has three parts, (a), (b) and (c), but it does not give the marks for each part. The 4, 6 and 10 marks used here come from the published 0470 Paper 1 mark scheme for June 2025. The syllabus states that there are no significant changes for 2027.</p>

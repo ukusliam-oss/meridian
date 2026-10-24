@@ -2,6 +2,7 @@
 // example answers behind buttons). Nothing is typed or saved.
 
 import { $, $$, boot, esc, scrollToEl } from './core.js';
+import { glassChrome } from './glass.js';
 import set from './data/history/kq6-paper2.js';
 
 const root = document.documentElement;
@@ -57,4 +58,5 @@ document.addEventListener('click', e => {
 });
 
 boot();
+glassChrome();
 root.classList.add('is-ready');

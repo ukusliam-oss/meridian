@@ -2,7 +2,7 @@
 // Assessment facts are from the syllabus; notes, plans and questions are our own wording.
 export default {
   id: 'history', code: '0470', name: 'History', color: 'hist',
-  examHead: 'How History 0470 is examined',
+  examHead: '<em>How</em>History 0470 is examined',
   examLede: 'All candidates take Paper 1 and Paper 2. They also take either Component 3 (Coursework) or Paper 4 (Alternative to Coursework). Your school decides which.',
   papers: [
     {
@@ -62,7 +62,7 @@ export default {
     note: 'Revise this key question in detail. You need to know the events, people and dates well enough to judge whether a source is reliable, typical or surprising.',
   },
 
-  topicsHead: 'Core content and depth studies',
+  topicsHead: '<em>Core content</em>and depth studies',
   topicsLede: 'Most schools teach Option B (the twentieth century) and depth study B (Germany, 1918–45). Open a key question to see the content you need to know.',
   topics: {
     groups: [
@@ -151,7 +151,7 @@ export default {
 
   lab: {
     kind: 'timeline', nav: 'Timeline',
-    head: 'Timeline: international relations, 1919–1991',
+    head: '<em>Timeline:</em>international relations, 1919–1991',
     lede: 'Key events for the six Option B key questions. Drag the timeline or use the arrow buttons to move between events. Use the filters to show one key question at a time.',
     lanes: [
       { id: 1, label: 'KQ1 Versailles', c: '#f0b45a' },
@@ -215,7 +215,7 @@ export default {
     ],
   },
 
-  techHead: 'Exam technique',
+  techHead: '<em>Exam</em>technique',
   techLede: 'History answers are marked using levels of response. To reach the higher levels, you need to explain and then make a judgement, not just describe.',
   technique: [
     {
@@ -276,7 +276,7 @@ export default {
     },
   ],
 
-  wordsHead: 'Command words',
+  wordsHead: '<em>Command</em>words',
   wordsLede: 'History questions use a small number of command words: describe, explain and discuss. Phrases such as "How far do you agree…?" and "How important…?" tell you that a judgement is needed.',
   words: [
     { w: 'Describe', depth: 2, means: 'Give the main features of an event or topic.', do: 'Give accurate, specific facts in a sensible order. You do not need to explain.' },

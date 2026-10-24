@@ -4,7 +4,7 @@
 export default {
   id: 'economics',
   minutesPerMark: 1.4,
-  head: 'Paper 2 practice: Section B questions',
+  head: '<em>Paper 2 practice:</em>Section B questions',
   lede: 'Seven Section B questions, each in four parts worth 2, 4, 6 and 8 marks. Two include calculations and one asks for a diagram. Part (d) has two example answers to compare.',
   how: 'Choose a set. Write your answer on paper, or plan it in your head, then open the mark scheme for each part. Draw diagrams on paper too. The times are a guide based on the marks. Nothing here is saved.',
   source: `<p><b>Marks per part</b> (2, 4, 6 and 8) and the point-based marking for parts (a) to (c) follow the 2027 specimen Paper 2 mark scheme (version 3). The levels for part (d) are paraphrased from Table A in that mark scheme.</p>

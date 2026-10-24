@@ -15,8 +15,14 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 ```
 
 ## Map
-- `assets/css/site.css` — the whole design system: tokens (dark default, light via `data-theme`,
-  `data-tone="dark"` forces dark inside light pages), nav + phone tab bar, home, subject, labs.
+- `assets/css/site.css` — the whole design system, shared by hubs and chapters: tokens (dark default, light via
+  `data-theme`, `data-tone="dark"` forces dark inside light pages), nav + phone tab bar, home, subject, labs.
+  One type system everywhere: `.display/.h1/.h2` are light serif capitals whose `<em>` lead phrase sits on its own
+  line in italic and the subject colour; `.mono`/`.eyebrow`/`.tag` are Plex Mono capitals; Inter for reading.
+  Violet `--brand` is the glass chrome on every page (nav, tab bar, sub-nav, chapter pill and menu, with the
+  pointer-lit `.stroke-border` rim from `glass.js` `glassChrome()`); `--accent`/`--accent-deep` is the subject
+  colour for content. Reading floor: labels 12px (`--fs-label`), notes 13px, nothing below 11px; small accent
+  labels on light paper use `--accent-deep` for 4.5:1.
 - `assets/js/core.js` — motion core: Lenis on GSAP's ticker, reveals, SplitText headlines,
   counters (`data-count`), magnetic buttons, nav tone, theme toggle (view-transition circle),
   sub-nav scroll spy, `store` (localStorage, try/catch).
@@ -37,8 +43,8 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 ## History scroll chapters (plan: `../Meridian History 설계 계획서.md`)
 - `history/kq6.html` — KQ6 chapter: 33 scenes over one globe. `assets/js/chapter.js` renders the scenes from
   `assets/js/data/history/kq6.js` and turns scroll into globe progress (a scene holds while its panel is on the reading
-  line; the camera flies in the gaps). `assets/css/chapter.css` is the type system ported from emotion-agency.com
-  (light serif capitals with an italic lead word, Plex Mono capitals, violet pill tags, glass pill navigator).
+  line; the camera flies in the gaps). `assets/css/chapter.css` adds the globe layer, scene panels, pill navigator and
+  scene menu on top of site.css's type system (`--acc` = the subject's `--accent`, so KQ6 content is History amber).
 - `history/kq6-paper2.html` + `assets/js/paper2.js` — Paper 2 room from `kq6-paper2.js` (sources on paper cards).
   The History hub links both through `CHAPTERS` in `tools/pages.py`.
 - `src/world/engine.js` → `assets/js/world.js` (`npm run world`). Per scene: a 2048 world texture plus a sharp detail
@@ -104,6 +110,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   page as not checked against official documents.
 
 ## Traps
+- **Map focus colour**: `chapter.js` passes the chapter's `accent` (else the page's `--accent`) to the engine, which
+  sends it to the paint worker in its `init` message. KQ6 names a darker gold (`#b38b4d`) because full History amber
+  glared as a state fill.
 - **The preview pane throttles requestAnimationFrame** while nothing drives it, so the globe can
   look dim or mid-zoom in screenshots. Run a short rAF loop in the page before screenshotting.
 - **Module cache**: python's http.server lets the browser cache JS modules; a `?v=` on the page

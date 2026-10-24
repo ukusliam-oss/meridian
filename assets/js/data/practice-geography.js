@@ -4,7 +4,7 @@
 export default {
   id: 'geography',
   minutesPerMark: 1.3,
-  head: 'Paper 1 and Paper 2 practice',
+  head: '<em>Practice:</em>Paper 1 and Paper 2',
   lede: 'Six questions in the 2027 format. Each one starts with short items based on a resource and ends with a 7-mark answer that uses a detailed specific example. Each 7-mark part has two example answers to compare.',
   how: 'Choose a set. Write your answer on paper, or plan it in your head, then open the mark scheme for each part. The times are a guide based on the marks. Nothing here is saved.',
   source: `<p><b>Marks per part.</b> The syllabus gives the marks for each paper (75) and each question (25), but not for individual parts. The marks used here follow Questions 2 to 4 of the 2027 specimen Papers 1 and 2, where the parts are worth 1, 2, 3, 4, 3, 5 and 7 marks. Each set leaves out one or two parts to keep it short.</p>
