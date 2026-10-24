@@ -18,7 +18,7 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - `assets/css/site.css` — the whole design system, shared by hubs and chapters: tokens (dark default, light via
   `data-theme`, `data-tone="dark"` forces dark inside light pages), nav + phone tab bar, home, subject, labs.
   One type system everywhere: `.display/.h1/.h2` are light serif capitals whose `<em>` lead phrase sits on its own
-  line in italic and the subject colour; `.mono`/`.eyebrow`/`.tag` are Plex Mono capitals; Inter for reading.
+  line in grey italic (only chapter openings, part titles and the Paper 2 title colour it); `.mono`/`.eyebrow`/`.tag` are Plex Mono capitals; Inter for reading.
   The nav bar, tab bar and sub-nav are grey glass; the chapter pill and scene menu are violet glass (`--brand`, the
   pill with `glass.js`'s pointer-lit `.stroke-border` rim); `--accent`/`--accent-deep` is the subject colour for
   content. Reading floor: labels 12px (`--fs-label`), notes 13px, nothing below 11px; small accent

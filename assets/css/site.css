@@ -92,12 +92,13 @@ ul, ol { padding: 0; list-style: none; }
 [data-tone="dark"] { background: var(--bg); color: var(--text); }
 
 /* ── Type ───────────────────────────────────────────────────────────────── */
-/* Headings: light serif capitals; an <em> lead phrase sits on its own line in italic, in the subject colour. */
+/* Headings: light serif capitals; an <em> lead phrase sits on its own line in grey italic (chapter openings and
+   part titles colour it, in chapter.css). */
 .display, .h1, .h2 { font-family: var(--serif); font-weight: 400; text-transform: uppercase; letter-spacing: -.004em; line-height: .88; text-wrap: balance; }
 .display { font-size: var(--fs-display); line-height: .86; }
 .h1 { font-size: var(--fs-h1); }
 .h2 { font-size: var(--fs-h2); line-height: .9; }
-.display em, .h1 em, .h2 em { display: block; font-style: italic; text-transform: none; color: var(--accent); }
+.display em, .h1 em, .h2 em { display: block; font-style: italic; text-transform: none; color: var(--text-2); }
 .lc, .mono .lc { text-transform: none; }
 .h3 { font-size: var(--fs-h3); font-weight: 640; letter-spacing: -.03em; line-height: 1.12; text-wrap: balance; }
 .h3 em, .serif { font-family: var(--serif); font-style: italic; font-weight: 400; letter-spacing: -.02em; }
@@ -108,7 +109,7 @@ ul, ol { padding: 0; list-style: none; }
 [data-theme="light"] [data-subject] :is(.eyebrow, .lab__side h3, .matrix .mh, .footer h4, .door__go, .paper__name, .topic__code, .pr__block h5, .h3 em) { color: var(--accent-deep); }
 [data-theme="light"] [data-subject] [data-tone="dark"] :is(.eyebrow, .door__go) { color: var(--accent); }
 /* pages without a subject (home) keep their headings' italics and labels grey */
-body:not([data-subject]) :is(.display, .h1, .h2) em, body:not([data-subject]) .footer h4 { color: var(--text-2); }
+body:not([data-subject]) .footer h4 { color: var(--text-2); }
 body:not([data-subject]) .eyebrow { color: var(--text-3); }
 .lede { font-size: clamp(1.1rem, 1rem + .45vw, 1.35rem); line-height: 1.5; color: var(--text-2); letter-spacing: -.016em; text-wrap: pretty; max-width: 40ch; }
 .muted { color: var(--text-2); }
