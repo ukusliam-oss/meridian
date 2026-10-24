@@ -394,6 +394,8 @@
 @media (max-width: 900px) { .world__legend { left: var(--gutter); right: auto; top: calc(var(--nav-h) + 8px); bottom: auto; width: min(280px, 80vw); } }
 
 .sc__lc svg { width: 100%; height: auto; overflow: visible; }
+.sc__xs .xs-ground { fill: color-mix(in oklab, var(--acc) 22%, transparent); }
+.sc__xs .lc-line { stroke-dasharray: none; }
 .lc-grid { stroke: rgb(255 255 255 / .08); stroke-width: 1; }
 .lc-grid.is-zero { stroke: rgb(255 255 255 / .32); }
 .lc-t { fill: rgb(255 255 255 / .66); font-size: 11px; }
@@ -419,6 +421,10 @@
 
 .world__spk { margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: rgb(255 255 255 / .8) !important; }
 .world__spk i { width: 3px; height: 14px; border-radius: 2px; background: linear-gradient(var(--acc), #fff); }
+/* geography keys: a coloured dash per plate boundary type, a triangle for volcanoes */
+.world__key { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 11.5px; color: rgb(255 255 255 / .8) !important; }
+.world__key i { width: 14px; height: 3px; border-radius: 2px; background: var(--c); margin-right: -4px; }
+.world__key i.is-tri { width: 10px; height: 9px; border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); margin-right: 0; }
 
 /* legend layers cross-fade when the indicator changes; the year rolls when it changes */
 .world__lg { transition: opacity .35s var(--ease), transform .35s var(--ease); }

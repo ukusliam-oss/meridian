@@ -11,7 +11,7 @@ export const dayNum = s => { const [y, m, d] = s.split('-').map(Number); return 
 
 // Bloc palette, fixed for the whole site (plan 4.3). `focus` is the chapter accent.
 export const PALETTE = {
-  land: '#2a303d', soviet: '#9b2c35', bloc: '#6e3a3c', west: '#2d4a6e', neutral: '#4b5160', focus: '#a084ee',
+  land: '#2a303d', natural: '#a3adc2', soviet: '#9b2c35', bloc: '#6e3a3c', west: '#2d4a6e', neutral: '#4b5160', focus: '#a084ee',
 };
 // Berlin's four sectors carry the flag of the power that held each, from 1945 to 1990 (West Berlin stayed under the
 // three Western Allies, East Berlin was the Soviet sector), a glaze over a dark ground, named at a hand-placed point
@@ -98,7 +98,7 @@ export function featuresOf(data) {
   // water (borders.json only): rivers { r: rank }, lakes { r: rank }, and sea deeper than 200 m around Europe
   const water = data.objects.rivers ? {
     rivers: feature(data, data.objects.rivers).features, lakes: feature(data, data.objects.lakes).features.map(upright),
-    deep: feature(data, data.objects.deep).features.map(upright), box: [-26, 33, 50, 72],
+    deep: feature(data, data.objects.deep).features.map(upright), box: data.waterBox || [-26, 33, 50, 72],
   } : null;
   return { countries, land: feature(data, data.objects.land), berlin, water };
 }
@@ -139,7 +139,8 @@ export function paintTexture(canvas, feats, map, box = [-180, -90, 180, 90], tex
     for (const f of wat.deep) { ctx.beginPath(); path(f); ctx.fill('evenodd'); } // even-odd: holes stay holes, however they are wound
     ctx.globalCompositeOperation = 'source-over';
   }
-  ctx.fillStyle = PALETTE.land;
+  // a natural globe (no borders, Geography) has lighter land, so relief and the coast carry the map without fills
+  ctx.fillStyle = date === 'none' ? PALETTE.natural : PALETTE.land;
   ctx.beginPath(); path(feats.land); ctx.fill('evenodd');
   ctx.save(); ctx.clip('evenodd'); // fills stay on the land, so the 1:10m coastline stays the edge
   // fills are a glaze over the land, not a lid: the land shows through (so the relief does), and a lighter band just

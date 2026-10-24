@@ -23,6 +23,7 @@ import { R_KM, clamp, smooth, ll, setViewport, placeCamera, footprint, textureSi
 import { geoInterpolate, geoDistance } from 'd3-geo';
 import { mesh } from 'topojson-client';
 import { DEG, dayNum, PALETTE, WALL_DOWN, featuresOf, countriesAt, runJob } from './paint.js';
+import { pointsLayer, plateLines, loadDem, terrainPatch, sectionOf, cutaway, PLATE_COLOR, DEPTH_STOPS, VOLCANO_COLOR } from './layers.js';
 
 export { PALETTE, ll };
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -91,7 +92,7 @@ const earthFrag = /* glsl */`
 #endif
   uniform vec4 uSlotA, uSlotB;      // x: value row (< 0: no data layer), y: d0, z: d1, w: ramp row
   uniform float uWA, uWB;           // inside each state, how far its values have moved towards the other state's row
-  uniform float uMix, uHatch; uniform vec3 uLight, uOcean, uOceanLift, uRim, uFocus;
+  uniform float uMix, uHatch; uniform vec3 uLight, uOcean, uOceanLift, uRim, uFocus, uCut;
   varying vec3 vN; varying vec3 vW; varying vec2 vUv;
   vec2 lonlat() { return vec2(vUv.x * 360.0 - 180.0, vUv.y * 180.0 - 90.0); }
   vec3 lin(vec3 c) { return pow(c, vec3(2.2)); }
@@ -173,6 +174,8 @@ const earthFrag = /* glsl */`
     return mix(base, r, c.a * smoothstep(0.0, 0.03, e));
   }
   void main() {
+    // the Earth cut open (uCut: first longitude, how far open 0..1, on): the northern octant from there is removed
+    if (uCut.z > 0.5) { vec2 q = lonlat(); if (q.y > 0.0 && mod(q.x - uCut.x + 360.0, 360.0) < 90.0 * uCut.y) discard; }
     float fa = 0.0, fb = 0.0, ia, ib; vec2 qa, qb;
     vec4 a = state(uGA, uDA, uBoxA, qa, ia);
     vec4 b = uMix > 0.0 ? state(uGB, uDB, uBoxB, qb, ib) : a;
@@ -378,7 +381,7 @@ function painter(feats, dataUrl, onDone) {
 
 // ── engine ──────────────────────────────────────────────────────────────────
 // scenes: engine scenes; a chapter panel that steps through several years has one per year, all with the same `panel`.
-export async function createWorld(host, { scenes, hero, data, dataUrl, relief, terrain = null, values = null, accent = null, reduced = false, onFrame } = {}) {
+export async function createWorld(host, { scenes, hero, data, dataUrl, relief, terrain = null, layers = null, light: lightMode = 'fixed', values = null, accent = null, reduced = false, onFrame } = {}) {
   if (accent) PALETTE.focus = accent;
   const canvas = document.createElement('canvas');
   canvas.className = 'world__canvas';
@@ -400,6 +403,14 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
   // label point of each country (modern borders carry one; dated borders do not need it)
   const point = new Map(countries.filter(f => f.properties.lat != null).map(f => [f.properties.key, f.properties]));
   const sceneOf = i => (i < 0 ? hero : scenes[i]);
+  // geography layers (tools/build-geo.mjs: earthquakes, volcanoes, plate boundaries) that some scene asks for, loaded
+  // before the first frame (together about 180 KB compressed)
+  const layerData = {};
+  {
+    const wants = new Set();
+    for (const s of [hero, ...scenes]) { for (const q of s.map.points || []) wants.add(q.id); if (s.map.plates) wants.add('plates'); }
+    await Promise.all([...wants].filter(k => layers && layers[k]).map(async k => { try { layerData[k] = await (await fetch(layers[k])).json(); } catch { /* the scene shows without it */ } }));
+  }
   const isData = s => !!(values && s && s.map.data && values[s.map.data.id]);
 
   // ── values: one row per state (row 0 = hero, row i + 1 = scene i), one column per country, (value, focus) ──
@@ -579,7 +590,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     uRelW: { value: flat }, uRelE: { value: flat }, uTA: { value: blank }, uTB: { value: blank },
     uQA: { value: blank }, uQB: { value: blank }, uQBoxA: { value: new Vector4() }, uQBoxB: { value: new Vector4() },
     uRelBox: { value: new Vector4(...(relief?.europeBox || [0, 0, 1, 1])) },
-    uMix: { value: 0 }, uHatch: { value: 60 }, uLight: { value: light },
+    uMix: { value: 0 }, uHatch: { value: 60 }, uLight: { value: light }, uCut: { value: new Vector3(0, 0, 0) },
     uOcean: { value: new Color('#06080d') }, uOceanLift: { value: new Color('#0c1220') }, uRim: { value: rim }, uFocus: { value: new Color(PALETTE.focus) },
   };
   if (relief) {
@@ -615,6 +626,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
   const borderSets = new Map();
   const statesObj = data.objects.cshapes || data.objects.countries;
   const bordersFor = date => {
+    if (date === 'none') return null; // a natural globe: land, water and relief only
     if (borderSets.has(date)) return borderSets.get(date);
     const on = g => !g.properties || !g.properties.from || !date || date === 'modern' || (g.properties.from <= date && date < g.properties.to);
     const lines = mesh(data, statesObj, (a, b) => a !== b && on(a) && on(b)).coordinates;
@@ -634,6 +646,9 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
       const p = point.get(a.from), q = point.get(a.to); if (!p || !q) return;
       const m = arrowMesh([p.lat, p.lon], [q.lat, q.lon], ARROW[a.kind] || ARROW.capital, s.camera.alt); g.add(m); items.push({ type: 'arrow', m, flow: true });
     });
+    if (s.map.plates && layerData.plates) for (const [kind, lines] of plateLines(layerData.plates, s.map.plates)) {
+      const m = fatLines(lines, PLATE_COLOR[kind], 1.8); g.add(m); items.push({ type: 'outline', m, mat: m.material });
+    }
     if (isData(s) && (s.map.focus || []).length) {
       const rings = countriesAt(countries, s.map.borders).filter(f => s.map.focus.includes(f.properties.key)).flatMap(ringsOf);
       const m = fatLines(rings, PALETTE.focus, 2); g.add(m); items.push({ type: 'outline', m, mat: m.material });
@@ -735,16 +750,115 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     spikes.instanceMatrix.needsUpdate = true; if (spikes.instanceColor) spikes.instanceColor.needsUpdate = true;
   }
 
+  // points: earthquakes and volcanoes, cross-faded between the scenes that show them. A scene that plays its quakes runs
+  // a clock through the years (about 1.4 a second) and keeps frames coming while it does
+  const pointSets = Object.fromEntries(['quakes', 'volcanoes'].filter(k => layerData[k]).map(k => { const l = pointsLayer(k, layerData[k]); globe.add(l.obj); return [k, l]; }));
+  const pointSpec = (s, id) => s && (s.map.points || []).find(q => q.id === id);
+  let clockYear = null;
+  function setPoints(sA, sB, mix, time, alt) {
+    let live = false; clockYear = null;
+    const scale = clamp(1.15 - Math.log10(alt / 6000) * 0.35, 0.8, 1.8), px = renderer.getPixelRatio();
+    for (const [id, l] of Object.entries(pointSets)) {
+      const a = pointSpec(sA, id), b = pointSpec(sB, id), op = (a ? 1 - mix : 0) + (b ? mix : 0), spec = mix < 0.5 ? a || b : b || a;
+      let now = 0;
+      if (spec && spec.play && !reduced && op > 0.001) {
+        const [y0, y1] = spec.years || [2000, 2025];
+        now = y0 + (time * 1.4) % (y1 - y0 + 4); live = true; clockYear = Math.min(y1, Math.floor(now));
+      }
+      l.set(spec, op, now, px, scale);
+    }
+    return live;
+  }
+
+  // landscapes: a scene's relief3d { site, exag, topo, contours } lays that site's real heights on the globe, and its
+  // section { from, to } draws a line across them (the panel draws the profile). Patches are built when first needed
+  const THREE = { BufferGeometry, Float32BufferAttribute, Mesh, ShaderMaterial, MeshBasicMaterial, Group, Color, DoubleSide, Vector3 };
+  const dems = new Map(), patches = new Map();
+  const demOf = site => {
+    if (!dems.has(site)) dems.set(site, layers && layers.dem ? loadDem(layers.dem, site).catch(() => null) : Promise.resolve(null));
+    return dems.get(site);
+  };
+  const patchOf = i => {
+    const s = sceneOf(i), r = s && s.map.relief3d; if (!r) return null;
+    const key = `${r.site}|${r.exag || 1}|${JSON.stringify(s.map.section || null)}`;
+    if (patches.has(key)) return patches.get(key);
+    patches.set(key, null);
+    demOf(r.site).then(dem => {
+      if (!dem) return;
+      const g = new Group(), m = terrainPatch(dem, r.exag || 1, light, THREE); g.add(m);
+      let line = null;
+      if (s.map.section) {
+        const { pts } = sectionOf(dem, s.map.section.from, s.map.section.to, r.exag || 1);
+        const pos = []; for (let k = 1; k < pts.length; k++) pos.push(pts[k - 1].x, pts[k - 1].y, pts[k - 1].z, pts[k].x, pts[k].y, pts[k].z);
+        line = new LineSegments2(new LineSegmentsGeometry().setPositions(pos), new LineMaterial({ color: '#ffffff', linewidth: 2.5, transparent: true, opacity: 0, depthTest: false }));
+        line.frustumCulled = false; line.renderOrder = 4; g.add(line);
+      }
+      g.visible = false; globe.add(g); patches.set(key, { g, m, line }); dirty = true;
+    });
+    return null;
+  };
+  function setLandscape(sA, sB, i, j, mix) {
+    const want = new Map();
+    const add = (k, s, op) => { if (s && s.map.relief3d && op > 0.001) { const p = patchOf(k); if (p) want.set(p, { s, op: (want.get(p)?.op || 0) + op }); } };
+    add(i, sA, 1 - mix); add(j, sB, mix);
+    for (const p of patches.values()) if (p && !want.has(p)) p.g.visible = false;
+    for (const [p, { s, op }] of want) {
+      const r = s.map.relief3d;
+      p.g.visible = true; p.m.visible = true;
+      const u = p.m.material.uniforms; u.uOpacity.value = op; u.uTopo.value = r.topo || 0; u.uContour.value = r.contours || 0;
+      if (p.line) { p.line.material.opacity = op; p.line.material.resolution = lineRes; }
+    }
+  }
+  // the Earth cut open: a scene's cutaway { lon } removes the northern octant from that longitude
+  const cuts = new Map();
+  function setCutaway(sA, sB, mix) {
+    const a = sA && sA.map.cutaway, b = sB && sB.map.cutaway, spec = mix < 0.5 ? a || b : b || a;
+    const open = (a ? 1 - mix : 0) + (b ? mix : 0);
+    for (const c of cuts.values()) c.g.visible = false;
+    if (!spec || open < 0.001) { earthU.uCut.value.set(0, 0, 0); air.visible = true; return; }
+    if (!cuts.has(spec.lon)) { const c = cutaway(spec.lon, THREE); globe.add(c.g); cuts.set(spec.lon, c); }
+    const e = reduced ? 1 : ease(clamp(open));
+    cuts.get(spec.lon).set(e, 1);
+    earthU.uCut.value.set(spec.lon, e, 1); air.visible = e < 0.02;
+  }
+
   // ── legend: indicator, year (rolls), colour ramp with the focus countries on it, source ───────────
   const legend = document.createElement('div'); legend.className = 'world__legend'; host.appendChild(legend);
   legend.innerHTML = '<div class="world__lg"></div>';
   let legendKey = '', legendYear = '', legendTicks = [];
   const whenOf = spec => (spec.month ? `${MONTHS[+spec.month.slice(5) - 1]} ${spec.month.slice(0, 4)}` : String(spec.year));
   // the legend follows the state that fills more of the screen; values blend when both states share an indicator
+  // geography layers: depth colours and sizes for quakes, the volcano symbol, boundary colours, sources
+  function pointsLegend(s) {
+    const q = pointSpec(s, 'quakes'), v = pointSpec(s, 'volcanoes'), pl = s.map.plates && layerData.plates;
+    const yrs = q && q.years ? `${q.years[0]}–${q.years[1]}` : '2000–2025';
+    return `${q ? `<p class="mono world__ind"><span>Earthquakes, magnitude ${q.minMag || 5.5}+</span> · <span class="world__yr"><b>${yrs}</b></span></p>
+        <div class="world__rampbox"><div class="world__ramp" style="background:linear-gradient(90deg,${DEPTH_STOPS.map(d => d[1]).join(',')})"></div></div>
+        <div class="world__ticks mono">${DEPTH_STOPS.map((d, k) => `<span>${d[0]}${k === DEPTH_STOPS.length - 1 ? ' km' : ''}</span>`).join('')}</div>
+        <p class="mono world__unit">Colour: depth of focus · size: magnitude</p>` : ''}
+      ${v ? `<p class="mono world__key"><i style="--c:${VOLCANO_COLOR}" class="is-tri"></i>Volcanoes that erupted in the last 10,000 years</p>` : ''}
+      ${pl ? `<p class="mono world__key">${(s.map.plates === true ? Object.keys(PLATE_COLOR) : s.map.plates).map(k => `<i style="--c:${PLATE_COLOR[k]}"></i>${{ divergent: 'Spreading', convergent: 'Subduction', collision: 'Collision', transform: 'Transform' }[k]}`).join(' ')}</p>` : ''}
+      <p class="world__src">${[q && 'Earthquakes: USGS ComCat', v && 'Volcanoes: Smithsonian GVP', pl && 'Plates: PB2002 (Bird 2003)'].filter(Boolean).join('. ')}.</p>`;
+  }
   function setLegend(sA, sB, w) {
     const s = w < 0.5 ? sA : sB;
     const spec = s && (s.map.data || s.map.spikes), sp = s && s.map.data && s.map.spikes;
-    const key = spec && values && values[spec.id] ? `${spec.id}|${spec.domain}|${sp ? sp.id : ''}|${(s.map.focus || []).join()}` : '';
+    let key = spec && values && values[spec.id] ? `${spec.id}|${spec.domain}|${sp ? sp.id : ''}|${(s.map.focus || []).join()}` : '';
+    const pts = !key && s && ((s.map.points || []).length || (s.map.plates && layerData.plates));
+    if (pts) key = `pts|${JSON.stringify(s.map.points || [])}|${JSON.stringify(s.map.plates || '')}`;
+    if (pts && key !== legendKey) {
+      legendKey = key; legend.classList.add('is-on');
+      const box = legend.firstElementChild, next = box.cloneNode(false);
+      next.innerHTML = pointsLegend(s);
+      box.classList.add('is-out'); next.classList.add('is-in'); legend.appendChild(next);
+      requestAnimationFrame(() => next.classList.remove('is-in'));
+      setTimeout(() => box.remove(), reduced ? 0 : 450);
+    }
+    if (pts) { // the year while quakes play
+      const b = legend.lastElementChild.querySelector('.world__yr b');
+      if (b && clockYear != null && b.textContent !== String(clockYear)) b.textContent = String(clockYear);
+      return;
+    }
     if (key !== legendKey) {
       legendKey = key; legendYear = '';
       legend.classList.toggle('is-on', !!key);
@@ -867,6 +981,12 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     const heroCam = { ...hero.camera, lon: hero.camera.lon + (reduced ? 0 : Math.sin(time * 0.06) * 12) };
     const alt = placeCamera(camera, i < 0 ? heroCam : sA.camera, j < 0 ? heroCam : sB.camera, tt, W, H);
     lineLift = 1 + clamp(alt / R_KM * 0.002, 1e-6, 0.0015);
+    // a chapter that goes all round the world (Geography) carries its light with the camera, from the upper left as
+    // the fixed light falls on Europe, so no scene lands on the night side
+    if (lightMode === 'camera') {
+      const d = camera.position.clone().normalize(), east = new Vector3(0, 1, 0).cross(d).normalize(), north = d.clone().cross(east);
+      light.copy(d).addScaledVector(east, -0.75).addScaledVector(north, 0.6);
+    }
 
     // textures: keep the last complete state while a new one is painting, so nothing ever flashes blank
     const A = texturesOf(i, true) || lastA || lastB, B = texturesOf(j, true) || A;
@@ -887,14 +1007,16 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     const ba = bordersFor(sA.map.borders), bb = bordersFor(sB.map.borders);
     for (const m of borderSets.values()) { m.material.opacity = 0; m.material.resolution = lineRes; m.scale.setScalar(lineLift); }
     const cityA = sA.map.city ? 0.4 : 1, cityB = sB.map.city ? 0.4 : 1;
-    ba.material.opacity += 0.28 * (1 - mix) * cityA; bb.material.opacity += 0.28 * mix * cityB;
+    if (ba) ba.material.opacity += 0.28 * (1 - mix) * cityA; if (bb) bb.material.opacity += 0.28 * mix * cityB;
 
     setSpikes(i, j, mix, alt);
+    live = setPoints(sA, sB, mix, time, alt);
+    setLandscape(i >= 0 ? sA : null, sB, i, j, j === i ? 0 : mix);
+    setCutaway(sA, sB, j === i ? 0 : mix);
     setLegend(sA, sB, w);
-    live = false;
     for (const [idx, o] of overlays) if (idx !== i && idx !== j) o.g.visible = false;
     // within one panel the overlays and labels are the same, so the first stays and nothing dips between years
-    if (samePanel) { live = setOverlay(i, 1, 1, time); if (j !== i) { const o = overlayFor(j); if (o) o.g.visible = false; } }
+    if (samePanel) { live = setOverlay(i, 1, 1, time) || live; if (j !== i) { const o = overlayFor(j); if (o) o.g.visible = false; } }
     else {
       if (i >= 0) live = setOverlay(i, 1, 1 - smooth(0.05, 0.4, f), time) || live;
       if (j !== i) live = setOverlay(j, smooth(0.55, 1, f), smooth(0.5, 0.8, f), time) || live;
@@ -931,7 +1053,9 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     setGate(panel, g) { if (gates.get(panel) !== g) { gates.set(panel, g); dirty = true; } },
     pointOf: key => point.get(key),
     // paint a coming state and build its overlays and labels in idle time, so its first frame does no work
-    prepare(i) { if (i >= -1 && i < scenes.length) { texturesOf(i); terrainOf(i); overlayFor(i); markersFor(i); } },
+    prepare(i) { if (i >= -1 && i < scenes.length) { texturesOf(i); terrainOf(i); overlayFor(i); markersFor(i); patchOf(i); } },
+    // the height profile along a section line: { prof: [{ d km, h m }], total km }, or null without the site's heights
+    async profile(site, from, to) { const dem = await demOf(site); return dem ? sectionOf(dem, from, to, 1) : null; },
     stats,
     destroy() { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); paint.destroy(); renderer.dispose(); },
   };

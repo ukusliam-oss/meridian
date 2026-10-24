@@ -8,7 +8,7 @@ import { MT, strokeBorder, aurora, animIcon, drawIn, nudge } from './glass.js';
 const { default: data } = await import(document.body.dataset.chapter || './data/history/kq6.js');
 const usesValues = data.scenes.some(s => (s.map && (s.map.data || s.map.spikes)) || (s.chart && (s.chart.series || []).some(sr => sr.ind)));
 const CFG = {
-  borders: data.borders === 'modern' ? '../assets/data/countries-modern.json' : '../assets/data/borders.json',
+  borders: data.borders === 'modern' ? '../assets/data/countries-modern.json' : data.borders === 'none' ? '../assets/data/geo/natural.json' : '../assets/data/borders.json',
   values: usesValues ? '../assets/data/econ.json' : null,
   hero: data.hero || { lat: 47, lon: 24, alt: 15500 },
   ribbon: data.ribbon || ['1945-01-01', '1992-01-01'],
@@ -17,7 +17,10 @@ const CFG = {
   relief: data.relief || { world: '../assets/data/relief-world.jpg', europe: '../assets/data/relief-europe.jpg', europeBox: [-15, 30, 65, 75] },
   // shaded terrain tiles for close and middle views (tools/build-terrain.mjs); a chapter can switch them off
   terrain: data.terrain === false ? null : '../assets/data/terrain/index.json',
+  // Geography layers (tools/build-geo.mjs); the engine fetches only those a scene asks for
+  layers: { quakes: '../assets/data/geo/quakes.json', volcanoes: '../assets/data/geo/volcanoes.json', plates: '../assets/data/geo/plates.json', dem: '../assets/data/geo/dem/' },
   accent: data.accent || null,
+  light: data.light || 'fixed',
 };
 
 // indicator values: chart series that name an indicator are drawn from them, so no figure is typed twice
@@ -90,6 +93,29 @@ function lineChart(c, id) {
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.title || 'Chart')}"><defs>${clip}</defs>${grid.join('')}${yrs.join('')}${marks}${lines}${cursor}</svg>
     ${c.note || src ? `<figcaption class="mono">${esc(c.note || 'Source')} ${src}</figcaption>` : ''}</figure>`;
 }
+// a cross-section along the scene's section line, drawn from the same heights as the landscape once the globe has them
+function section(s) {
+  const x = s.map.section;
+  return `<figure class="sc__chart sc__xs" data-xs="${s.id}"><figcaption class="mono">Cross-section ${esc(x.label || 'A to B')} · height in metres</figcaption>
+    <svg viewBox="0 0 460 200" role="img" aria-label="Cross-section ${esc(x.label || 'A to B')}"></svg><figcaption class="mono" data-xs-note>Loading the heights</figcaption></figure>`;
+}
+function drawSection(fig, sec, exag) {
+  const W = 460, H = 200, L = 40, R = 14, T = 14, B = 26, { prof, total } = sec;
+  const hi = Math.max(...prof.map(p => p.h)), step = [100, 200, 250, 500, 1000, 2000].find(st => hi / st <= 5) || 5000, top = Math.ceil(hi / step) * step;
+  const X = d => L + d / total * (W - L - R), Y = h => T + (1 - Math.max(0, h) / top) * (H - T - B);
+  const grid = []; for (let v = 0; v <= top; v += step) grid.push(`<line x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="lc-grid${v === 0 ? ' is-zero' : ''}"/><text x="${L - 6}" y="${(Y(v) + 3.5).toFixed(1)}" text-anchor="end" class="mono lc-t">${v}</text>`);
+  const kstep = [1, 2, 5, 10, 20].find(k => total / k <= 6) || 50, ticks = [];
+  for (let k = 0; k <= total + 1e-6; k += kstep) ticks.push(`<text x="${X(k).toFixed(1)}" y="${H - 8}" text-anchor="middle" class="mono lc-t">${k}${k === 0 ? '' : ''}</text>`);
+  const line = prof.map((p, k) => `${k ? 'L' : 'M'}${X(p.d).toFixed(1)} ${Y(p.h).toFixed(1)}`).join('');
+  const area = `${line}L${X(total).toFixed(1)} ${Y(0).toFixed(1)}L${X(0).toFixed(1)} ${Y(0).toFixed(1)}Z`;
+  const peak = prof.reduce((a, b) => (b.h > a.h ? b : a));
+  fig.querySelector('svg').innerHTML = `${grid.join('')}<path d="${area}" class="xs-ground"/><path d="${line}" class="lc-line" style="--c:var(--acc)"/>
+    <text x="${L}" y="${T - 2}" class="mono lc-lab" fill="#fff">A</text><text x="${W - R}" y="${T - 2}" text-anchor="end" class="mono lc-lab" fill="#fff">B</text>
+    <circle cx="${X(peak.d).toFixed(1)}" cy="${Y(peak.h).toFixed(1)}" r="3" fill="#fff"/><text x="${(X(peak.d) + 6).toFixed(1)}" y="${(Y(peak.h) + 4).toFixed(1)}" class="mono lc-t">${Math.round(peak.h)} m</text>${ticks.join('')}`;
+  const vex = Math.round((total * 1000) / (W - L - R) / (top / (H - T - B)));
+  fig.querySelector('[data-xs-note]').textContent = `Distance in km (${total.toFixed(1)} km). Vertical exaggeration about ×${vex}. Copernicus DEM GLO-30.`;
+  fig.classList.add('is-drawn');
+}
 function chain(c) {
   return `<div class="sc__block"><span class="sc__label mono">${esc(c.title || 'Chain of analysis')}</span><ol class="chain2" data-chain>${c.steps.map((x, k) => `<li${k === c.globe ? ' class="is-globe"' : ''}><span class="mono">${k + 1}</span><span>${esc(x)}</span></li>`).join('')}</ol></div>`;
 }
@@ -143,7 +169,7 @@ function sceneHTML(s, i) {
       <p class="sc__date">${esc(s.dateLabel)}</p>
       <h2 class="display sc__title">${title(s.title)}</h2>
       <div class="sc__body">${s.body}</div>
-      ${s.chart ? chart(s.chart, s.id) : ''}${s.chain ? chain(s.chain) : ''}${s.compare ? compare(s.compare) : ''}${s.cascade ? cascade(s.cascade) : ''}
+      ${s.chart ? chart(s.chart, s.id) : ''}${s.map && s.map.section && s.map.relief3d ? section(s) : ''}${s.chain ? chain(s.chain) : ''}${s.compare ? compare(s.compare) : ''}${s.cascade ? cascade(s.cascade) : ''}
       <div class="sc__block sc__why"><span class="sc__label mono">Why it matters</span><p>${esc(s.why)}</p></div>
       ${s.evaluation && s.evaluation.length ? `<div class="sc__block"><span class="sc__label mono">It depends on</span><ul class="sc__eval">${s.evaluation.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
       ${mis}${judge}
@@ -468,8 +494,12 @@ async function start() {
     const [{ createWorld }, borders] = await Promise.all([import('./world.js'), loadBorders()]);
     buildEngineScenes();
     setPct(0.96);
-    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain });
+    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain, layers: CFG.layers, light: CFG.light });
     window.__meridianWorld = world; // stats for checks in the preview
+    if (world) for (const s of scenes) if (s.map && s.map.section && s.map.relief3d) {
+      const fig = $(`[data-xs="${s.id}"]`), x = s.map.section;
+      world.profile(s.map.relief3d.site, x.from, x.to).then(sec => { if (fig && sec) drawSection(fig, sec); });
+    }
     if (!world) root.classList.add('no-webgl');
   } catch (err) {
     if (!eScenes.length) { base = scenes.map((_, k) => k); span = scenes.map(() => 1); eScenes = scenes; }

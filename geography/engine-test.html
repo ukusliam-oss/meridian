@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Engine test | Meridian Geography</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#07080b">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f0b45a' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cellipse cx='12' cy='12' rx='4' ry='9.5'/%3E%3C/svg%3E">
+<link rel="preload" href="../assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../assets/data/geo/natural.json" as="fetch" crossorigin>
+<link rel="stylesheet" href="../assets/css/site.css">
+<link rel="stylesheet" href="../assets/css/chapter.css">
+<script>(function(){var d=document.documentElement,t;d.classList.add('js');try{t=JSON.parse(localStorage.getItem('meridian:theme'))}catch(e){}d.dataset.theme='dark';window.__mFallback=setTimeout(function(){d.classList.add('reveal-fallback')},3000)})();</script>
+</head>
+<body class="chapter" data-subject="geography" data-chapter="./data/geography/engine-test.js">
+<a class="skip" href="#content">Skip to content</a>
+<header class="nav" data-tone="dark"><div class="nav__bar">
+  <a class="brand" href="../index.html" aria-label="Meridian home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><ellipse cx="12" cy="12" rx="3.8" ry="9.2" style="stroke:var(--accent, currentColor)"/><path d="M2.8 12h18.4" opacity=".5"/></svg><span>Meridian</span><small>I&amp;S revision</small></a>
+  <nav class="nav__links" aria-label="Subjects"><a class="nav__link" href="../history.html" style="--c:var(--hist)">History</a><a class="nav__link" href="../economics.html" style="--c:var(--econ)">Economics</a><a class="nav__link" href="../geography.html" style="--c:var(--geo)" aria-current="page">Geography</a></nav>
+  <button class="icon-btn" data-theme-toggle aria-label="Switch light or dark theme">
+    <svg class="theme-ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+    <svg class="theme-ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>
+  </button>
+  <span class="nav__progress" aria-hidden="true"></span>
+</div></header>
+<nav class="tabbar" aria-label="Pages"><a href="../index.html" style="--c:var(--text)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5 12 4l8.5 6.5V19a1 1 0 0 1-1 1H15v-5.5H9V20H4.5a1 1 0 0 1-1-1z"/></svg><span>Home</span></a><a href="../history.html" style="--c:var(--hist)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.2 12 4l9 5.2M5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 20.5h18"/></svg><span>History</span></a><a href="../economics.html" style="--c:var(--econ)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5c4 0 6 15 16 15M4 19.5c6-1 10-14 16-15"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg><span>Econ.</span></a><a href="../geography.html" style="--c:var(--geo)" aria-current="page"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3.4 3 13.6 0 17M12 3.5c-3 3.4-3 13.6 0 17"/></svg><span>Geog.</span></a></nav>
+<div class="loader" data-loader role="status" aria-live="polite">
+  <div class="loader__mid"><p class="loader__mark">Meridian <span>Geography</span></p><p class="mono">Topic 4 · Tectonic hazards</p></div>
+  <div class="loader__line"><i data-bar></i></div>
+  <div class="loader__foot"><span class="mono">The map is loading.</span><b class="mono" data-pct>000%</b><span class="mono">100%</span></div>
+</div>
+<div class="world" data-world aria-hidden="true"><div class="world__vignette"></div></div>
+<main id="content" class="ch">
+<section class="ch-hero"><div class="ch-wrap">
+  <p class="mono">IGCSE Geography 0460 · Topic 4 · Engine test</p>
+  <h1 class="display ch-hero__title"><em>Why does the ground</em>shake and burn?</h1>
+  <div class="ch-hero__row"><span class="ch-cue mono">Scroll to travel</span><p class="mono">Every earthquake, volcano and plate boundary on the globe is real data.</p></div>
+</div></section>
+<div data-scenes></div>
+<section class="ch-end" id="toolkit"><div class="ch-wrap">
+  <span class="tag mono">End of chapter</span>
+  <h2 class="display ch-end__title"><em>What you</em>need to remember</h2>
+  <div class="ch-end__grid">
+    <div class="ch-card"><h3 class="mono">One-page summary</h3><div class="ch-sum" data-sum></div></div>
+    <div class="ch-card"><h3 class="mono">Quick checks</h3><div class="ch-checks" data-checks></div></div>
+  </div>
+  <div class="ch-card" style="margin-top:28px"><h3 class="mono">Sources</h3><ol class="ch-sources" data-sources></ol>
+    <p class="ch-note">Earthquakes: USGS ANSS Comprehensive Catalog (public domain). Volcanoes: Global Volcanism Program, Smithsonian Institution, Volcanoes of the World. Plate boundaries: PB2002 (Bird 2003), GIS data by Hugo Ahlenius, Open Data Commons Attribution 1.0. Coastlines, rivers, lakes and relief: Natural Earth (public domain). Terrain: Copernicus DEM GLO-90 and GLO-30, © DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018, provided under COPERNICUS by the European Union and ESA. Status: engine test, not part of the site.</p></div>
+</div></section>
+</main>
+<div class="ribbon" data-ribbon aria-hidden="true"><div class="ribbon__date"><span class="ribbon__year" data-year>2019</span><span class="ribbon__label mono" data-label></span></div><div class="ribbon__track" data-track></div><div class="ribbon__ends mono" data-ends><span>2000</span><span>2026</span></div></div>
+<nav class="pillnav" aria-label="Chapter">
+  <button class="pillnav__menu" type="button" data-menu-btn aria-expanded="false" aria-controls="chmenu" aria-label="All scenes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path class="ln ln1" d="M4 8.5h16"/><path class="ln ln2" d="M4 15.5h16"/></svg></button>
+  <div class="pillnav__text"><span class="mono" data-pill-part>Topic 4</span><span class="mono" data-pill-date>Tectonic hazards</span></div>
+  <div class="pillnav__ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="pillnav__track" cx="18" cy="18" r="17"/><circle class="pillnav__bar" cx="18" cy="18" r="17" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" data-orb style="opacity:0"/></svg><svg class="pillnav__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10 15 5 5 5-5"/><path d="M4 4h7a4 4 0 0 1 4 4v12"/></svg></div>
+</nav>
+<div class="chmenu" id="chmenu" data-menu hidden></div>
+
+<footer class="footer"><div class="wrap">
+  <div class="footer__grid">
+    <div><a class="brand" href="../index.html" style="margin-bottom:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><ellipse cx="12" cy="12" rx="3.8" ry="9.2" style="stroke:var(--accent, currentColor)"/><path d="M2.8 12h18.4" opacity=".5"/></svg><span>Meridian</span></a>
+      <p>Revision help for Cambridge IGCSE History, Economics and Geography, made by your Individuals &amp; Societies prefect. The notes are written in our own words. Information about the exams has been checked against the official Cambridge syllabuses.</p></div>
+    <div><h4>Subjects</h4><ul><li><a href="../history.html">History</a></li><li><a href="../economics.html">Economics</a></li><li><a href="../geography.html">Geography</a></li></ul></div>
+    <div><h4>Official syllabuses</h4><ul>
+      <li><a href="https://www.cambridgeinternational.org/Images/721327-2027-2028-syllabus.pdf" rel="noopener">History 0470 (2027–2028)</a></li>
+      <li><a href="https://www.cambridgeinternational.org/Images/718148-2027-2029-syllabus.pdf" rel="noopener">Economics 0455 (2027–2029)</a></li>
+      <li><a href="https://www.cambridgeinternational.org/Images/718150-2027-2029-syllabus.pdf" rel="noopener">Geography 0460 (2027–2029)</a></li></ul></div>
+  </div>
+  <div class="footer__base"><span>Not affiliated with or endorsed by Cambridge University Press &amp; Assessment.</span><span>Always follow your teacher's guidance.</span></div>
+</div></footer>
+<script src="../assets/vendor/gsap.min.js" defer></script><script src="../assets/vendor/ScrollTrigger.min.js" defer></script><script src="../assets/vendor/SplitText.min.js" defer></script><script src="../assets/vendor/Flip.min.js" defer></script><script src="../assets/vendor/DrawSVGPlugin.min.js" defer></script><script src="../assets/vendor/CustomEase.min.js" defer></script><script src="../assets/vendor/lenis.min.js" defer></script>
+<script type="module" src="../assets/js/chapter.js"></script>
+</body>
+</html>

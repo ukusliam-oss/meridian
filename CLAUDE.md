@@ -85,6 +85,24 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - Checks before committing: `node tools/check-econ.mjs` (fields, sources, indicators and ISO3 codes, syllabus coverage,
   no em dashes; it also runs `tools/check-lab.mjs`, which checks every model effect against the direction table).
 
+## Geography scroll chapters (plan: `../Meridian Geography 설계 계획서.md`)
+- First chapter: Topic 4 Tectonic hazards (stage 0, the engine, is built; no chapter content yet). Test page:
+  `geography/engine-test.html` (unlinked, noindex) with `assets/js/data/geography/engine-test.js`, one scene per feature.
+- A Geography chapter sets `borders: 'none'` (a natural globe: no states, lighter land; `chapter.js` then loads
+  `assets/data/geo/natural.json`) and `light: 'camera'` (the light rides with the camera, from the upper left; History and
+  Economics keep the fixed light over the Atlantic, which leaves the Pacific dark).
+- `tools/build-geo.mjs` → `assets/data/geo/`: `quakes.json` (USGS ComCat, M5.5+, 2000–2025, 12,850; lon, lat, depth,
+  mag, decimal year flat), `volcanoes.json` (Smithsonian GVP Holocene list, 1,214), `plates.json` (PB2002 steps chained
+  by kind: divergent, convergent, collision, transform, with mean relative speed), `natural.json` (Natural Earth 1:10m
+  land, lakes and rivers up to rank 7, 200 m bathymetry, 10% of points kept: `KEEP=0.1`), and `dem/{site}.png|json`
+  (Copernicus GLO-30 heights packed in RGB, whole metres + 1000). Sites are listed in `SITES` in the build.
+- Scene map fields (engine in `src/world/layers.js`): `points: [{ id: 'quakes', minMag, years, play }, { id: 'volcanoes',
+  types }]` (GPU points; quakes coloured by depth and sized by magnitude, `play` runs a clock through the years),
+  `plates: true | [kinds]`, `relief3d: { site, exag, topo (0 landscape … 1 map), contours (m) }`, `section: { from, to,
+  label }` (a white line over the landscape; the panel draws the profile from the same heights through
+  `world.profile`), `cutaway: { lon }` (the northern octant from that longitude removed, layers on its faces; the earth
+  shader discards it through `uCut`). The legend switches to depth, volcano and boundary keys for these scenes.
+
 ## World engine
 - `src/world/engine.js` → `assets/js/world.js`, `src/world/paint-worker.js` → `assets/js/world-paint.js` (`npm run world`
   builds both); `src/world/paint.js` is shared. Painting runs in the worker (OffscreenCanvas), else in idle time.
@@ -144,6 +162,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
 - History chapter (2026-10-23): borders.json 414 KB (315 state versions, Europe detailed, rest coarse, Berlin layers);
   relief 174 + 366 KB; world.js 582 KB. Painting one scene's textures takes 55–120 ms on the dev Mac (Berlin about
   265 ms), so neighbours are painted in idle time while the reader reads. Checked in the preview at desktop and 375 px.
+- Geography engine test (2026-10-25, dev Mac, headless): geo layers 180 KB compressed (quakes 114, plates 47,
+  volcanoes 18) plus `natural.json` 408 KB; Fuji patch 386 KB. Drawing a frame 1.7 ms CPU on average (worst 5.6 ms).
+  History and Economics checked after the change: same look, no errors.
 - KQ6 on the live site (2026-10-25, empty cache, dev Mac): first load 891 KB in 21 files (borders.json 456 KB and
   world.js 171 KB compressed), globe ready in 2.6 s. Reading the whole chapter adds 4.7 MB of terrain tiles on desktop
   and 4.2 MB on a phone (counted with the engine's rules), all in the background.
@@ -212,5 +233,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   (`economics/data-room.html`) from the plan is not built. The chapter is live (pushing `main` deploys everything) and
   linked from the Economics hub with a "draft, not yet reviewed by a teacher" label; `engine-test.html` is reachable
   but unlinked and noindex.
+- Geography: only the engine test exists. Before the first chapter: landscape scenes need sharper coasts near their
+  site (at 40 km the 10% coastline is blocky, e.g. Suruga Bay under Fuji), `tools/build-terrain.mjs` must list the
+  Geography chapter files in `CHAPTERS` so their scenes get terrain tiles, and markers sit at sea level (on a 3D
+  landscape they float under the ground).
 - History chapters: only KQ6 exists (status draft, not yet teacher-reviewed). Scenes have no field yet for the plan's
   "exam link" layer.
