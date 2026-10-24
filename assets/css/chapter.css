@@ -11,11 +11,8 @@
   background: var(--ink); color: #f3f1eb;
 }
 .chapter [data-theme-toggle] { display: none; }
-/* History is amber on the home page and its hub, violet inside its chapters. The crossing is designed, not abrupt:
-   the hub's chapter cards are amber at the rim and violet within; the loader turns "History" and its line from amber
-   to violet as the map loads (--load, 0 to 1, from chapter.js); the opening italic keeps an amber glint on its left. */
-@property --load { syntax: '<number>'; inherits: true; initial-value: 0; }
-.chapter[data-subject="history"] { --accent: var(--brand); --accent-deep: var(--brand-deep); --from: var(--hist); }
+/* History is amber on the home page and its hub; its chapters (and the hub cards that open them) are fully violet */
+.chapter[data-subject="history"] { --accent: var(--brand); --accent-deep: var(--brand-deep); }
 
 /* ── globe layer ─────────────────────────────────────────────────────── */
 .world { position: fixed; inset: 0; z-index: 0; background: var(--ink); }
@@ -37,18 +34,17 @@
 .ch-wrap { width: min(1240px, 100% - 2 * var(--gutter)); margin-inline: auto; }
 
 /* ── loader ─────────────────────────────────────────────────────────── */
-.loader { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: var(--ink); color: #fff; transition: opacity .9s var(--ease), visibility .9s, --load .9s var(--ease); }
+.loader { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: var(--ink); color: #fff; transition: opacity .9s var(--ease), visibility .9s; }
 .loader.is-done { opacity: 0; visibility: hidden; }
 .loader__mid { text-align: center; display: grid; gap: 22px; justify-items: center; }
 .loader__mark { font-family: var(--serif); font-size: 34px; letter-spacing: .01em; }
-.loader__mark span { color: color-mix(in oklch, var(--from, var(--acc)) calc(100% - var(--load) * 100%), var(--acc)); font-style: italic; }
+.loader__mark span { color: var(--acc); font-style: italic; }
 .loader__mid .mono { max-width: 30ch; color: rgb(255 255 255 / .82); }
 .loader__foot { position: absolute; left: var(--gutter); right: var(--gutter); bottom: 22px; display: flex; gap: 28px; align-items: center; color: rgb(255 255 255 / .55); }
-.loader__foot b { color: color-mix(in oklch, var(--from, var(--acc)) calc(100% - var(--load) * 100%), var(--acc)); font-weight: 500; }
+.loader__foot b { color: var(--acc); font-weight: 500; }
 .loader__foot .mono:last-child { margin-left: auto; color: #fff; }
 .loader__line { position: absolute; left: var(--gutter); right: var(--gutter); bottom: 48px; height: 1px; background: rgb(255 255 255 / .1); }
-.loader__line i { display: block; height: 100%; width: 0; transition: width .3s;
-  background: linear-gradient(in oklch 90deg, var(--from, var(--acc)), var(--acc)) 0 0 / calc(100vw - 2 * var(--gutter)) 100% no-repeat; } /* the gradient spans the whole track, so the line reveals it */
+.loader__line i { display: block; height: 100%; width: 0; background: var(--acc); transition: width .3s; }
 
 /* ── display type (site.css), white on the map ────────────────────────── */
 .chapter .display { color: #fff; }
@@ -162,7 +158,8 @@
 .ch-hero .ch-wrap > :nth-child(2) { transition-delay: .12s; }
 .ch-hero .ch-wrap > :nth-child(3) { transition-delay: .3s; }
 .is-ready .ch-hero .ch-wrap > * { opacity: 1; transform: none; }
-.ch-hero__title em { background: linear-gradient(90deg, color-mix(in oklab, var(--from, var(--acc)) 55%, #fff), color-mix(in oklab, var(--from, var(--acc)) 30%, var(--acc)) 28%, var(--acc) 55%, color-mix(in oklab, var(--acc) 70%, var(--acc-deep))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ch-hero__title em { background: linear-gradient(90deg, color-mix(in oklab, var(--acc) 45%, #fff), var(--acc) 45%, color-mix(in oklab, var(--acc) 70%, var(--acc-deep))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.chapter[data-subject="history"] .ch-hero__title em { background-image: linear-gradient(90deg, #d9c8ff, var(--acc) 45%, #8f6bff); }
 
 /* ── end of chapter ─────────────────────────────────────────────────── */
 .ch-end { position: relative; padding: 30vh 0 120px; background: linear-gradient(180deg, transparent, var(--ink) 22vh); }
