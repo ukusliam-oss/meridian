@@ -489,13 +489,50 @@ function updatePanels(y, ep, near) {
   }
 }
 
+// ── sound (chapters with `sound: true`): one tap on the loader starts it, the nav toggle switches it ─────────
+// Browsers let audio start only from a tap, so the loader waits with two buttons: with sound (the default) or quietly.
+let snd = null;
+const SPEAKER = on => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/>${on ? '<path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>' : '<path d="m16 9.5 5 5M21 9.5l-5 5"/>'}</svg>`;
+function gate(enter) {
+  const box = document.createElement('div');
+  box.className = 'loader__gate';
+  box.innerHTML = `<button class="loader__go is-primary" type="button" data-sound="1">${SPEAKER(true)}<span>Enter with sound</span></button>
+    <button class="loader__go" type="button" data-sound="0"><span>Enter quietly</span></button>
+    <p class="mono loader__hint">The map is heard as well as seen. Sound can be turned off at any time.</p>`;
+  loader.classList.add('is-gate'); loader.appendChild(box);
+  const def = box.querySelector(snd.sound.enabled ? '[data-sound="1"]' : '[data-sound="0"]');
+  def.classList.add('is-primary'); box.querySelectorAll('.loader__go').forEach(b => b !== def && b.classList.remove('is-primary'));
+  requestAnimationFrame(() => def.focus({ preventScroll: true }));
+  box.addEventListener('click', e => {
+    const b = e.target.closest('[data-sound]'); if (!b) return;
+    snd.start(b.dataset.sound === '1');
+    if (world && world.replay) world.replay();
+    enter();
+  });
+}
+function soundToggle() {
+  const bar = $('.nav__bar'); if (!bar) return;
+  const b = document.createElement('button');
+  b.className = 'icon-btn sound-btn'; b.type = 'button';
+  const show = on => { b.innerHTML = SPEAKER(on); b.setAttribute('aria-label', on ? 'Turn sound off' : 'Turn sound on'); b.setAttribute('aria-pressed', String(on)); };
+  show(snd.sound.enabled);
+  b.addEventListener('click', () => snd.toggle());
+  snd.sound.onChange(show);
+  bar.insertBefore(b, $('[data-theme-toggle]', bar));
+}
+
 async function start() {
   setPct(0.02);
+  if (data.sound) {
+    try { snd = await import('./sound.js'); soundToggle(); } catch (err) { console.warn('Sound unavailable:', err); snd = null; }
+  }
   try {
     const [{ createWorld }, borders] = await Promise.all([import('./world.js'), loadBorders()]);
     buildEngineScenes();
     setPct(0.96);
-    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain, layers: CFG.layers, light: CFG.light });
+    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain, layers: CFG.layers, light: CFG.light,
+      onQuakes: snd ? (list, kind, year) => snd.quakes(list, kind, year) : null,
+      onPlaying: snd ? (() => { let was = false; return on => { if (on !== was) { was = on; snd.drone(on); } }; })() : null });
     window.__meridianWorld = world; // stats for checks in the preview
     if (world) for (const s of scenes) if (s.map && s.map.section && s.map.relief3d) {
       const fig = $(`[data-xs="${s.id}"]`), x = s.map.section;
@@ -524,7 +561,8 @@ async function start() {
   addEventListener('resize', () => { measure(); lastY = NaN; });
   document.fonts?.ready.then(() => { measure(); lastY = NaN; });
   new ResizeObserver(() => { measure(); lastY = NaN; }).observe($('[data-scenes]'));
-  requestAnimationFrame(() => { loader.classList.add('is-done'); root.classList.add('is-ready'); });
+  const enter = () => requestAnimationFrame(() => { loader.classList.add('is-done'); root.classList.add('is-ready'); });
+  if (snd) gate(enter); else enter();
   boot();
   if (location.hash) { const k = scenes.findIndex(s => '#' + s.id === location.hash); if (k >= 0) setTimeout(() => goTo(k), 400); }
 }

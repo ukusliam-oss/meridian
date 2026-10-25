@@ -381,7 +381,7 @@ function painter(feats, dataUrl, onDone) {
 
 // ── engine ──────────────────────────────────────────────────────────────────
 // scenes: engine scenes; a chapter panel that steps through several years has one per year, all with the same `panel`.
-export async function createWorld(host, { scenes, hero, data, dataUrl, relief, terrain = null, layers = null, light: lightMode = 'fixed', values = null, accent = null, reduced = false, onFrame } = {}) {
+export async function createWorld(host, { scenes, hero, data, dataUrl, relief, terrain = null, layers = null, light: lightMode = 'fixed', onQuakes = null, onPlaying = null, values = null, accent = null, reduced = false, onFrame } = {}) {
   if (accent) PALETTE.focus = accent;
   const canvas = document.createElement('canvas');
   canvas.className = 'world__canvas';
@@ -759,22 +759,52 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
   }
 
   // points: earthquakes and volcanoes, cross-faded between the scenes that show them. A scene that plays its quakes runs
-  // a clock through the years (about 1.4 a second) and keeps frames coming while it does
+  // a clock through the years (PLAY_RATE a second, from the first year when the scene starts playing) and keeps frames
+  // coming while it does. Each quake the clock passes is reported to onQuakes (the sound), with where it is on screen
+  const PLAY_RATE = 0.8;
   const pointSets = Object.fromEntries(['quakes', 'volcanoes'].filter(k => layerData[k]).map(k => { const l = pointsLayer(k, layerData[k]); globe.add(l.obj); return [k, l]; }));
   const pointSpec = (s, id) => s && (s.map.points || []).find(q => q.id === id);
-  let clockYear = null;
+  let clockYear = null, playT0 = null, lastNow = null;
+  const qd = layerData.quakes && layerData.quakes.data, qPos = new Vector3(), qView = new Vector3();
+  // index of the first quake at or after a decimal year (the catalogue is sorted by time)
+  const quakeAt = year => { let lo = 0, hi = qd.length / 5; while (lo < hi) { const m = (lo + hi) >> 1; if (qd[m * 5 + 4] < year) lo = m + 1; else hi = m; } return lo; };
+  function passQuakes(spec, from, to, op) {
+    if (!onQuakes || !qd || to <= from) return;
+    const out = [], min = spec.minMag || 0;
+    camera.getWorldDirection(qView);
+    for (let k = quakeAt(from), n = qd.length / 5; k < n && qd[k * 5 + 4] < to; k++) {
+      const [lon, lat, depth, mag] = [qd[k * 5], qd[k * 5 + 1], qd[k * 5 + 2], qd[k * 5 + 3]];
+      if (mag < min) continue;
+      const v = ll(lat, lon, 1.0004); qPos.copy(v).project(camera);
+      // on the far side of the globe a quake is heard quietly, as if through the Earth
+      const front = v.clone().normalize().dot(qView) < 0;
+      out.push({ mag, depth, lat, lon, pan: clamp(qPos.x, -1, 1), near: front ? 1 : 0.35, gain: op });
+    }
+    if (out.length) onQuakes(out);
+  }
   function setPoints(sA, sB, mix, time, alt) {
     let live = false; clockYear = null;
     const scale = clamp(1.15 - Math.log10(alt / 6000) * 0.35, 0.8, 1.8), px = renderer.getPixelRatio();
+    let playing = false;
     for (const [id, l] of Object.entries(pointSets)) {
       const a = pointSpec(sA, id), b = pointSpec(sB, id), op = (a ? 1 - mix : 0) + (b ? mix : 0), spec = mix < 0.5 ? a || b : b || a;
       let now = 0;
       if (spec && spec.play && !reduced && op > 0.001) {
         const [y0, y1] = spec.years || [2000, 2025];
-        now = y0 + (time * 1.4) % (y1 - y0 + 4); live = true; clockYear = Math.min(y1, Math.floor(now));
+        if (playT0 == null) { playT0 = time; lastNow = null; }
+        const span = y1 - y0 + 4, run = (time - playT0) * PLAY_RATE, lap = Math.floor(run / span);
+        now = y0 + run - lap * span; live = true; playing = true; clockYear = Math.min(y1, Math.floor(now));
+        if (id === 'quakes') {
+          if (lastNow != null && now >= lastNow) passQuakes(spec, lastNow, Math.min(now, y1 + 1), op);
+          else if (lastNow != null && onQuakes) onQuakes([], 'loop');
+          if (lastNow != null && Math.floor(now) !== Math.floor(lastNow) && now <= y1 + 1 && onQuakes) onQuakes([], 'year', Math.floor(now));
+          lastNow = now;
+        }
       }
       l.set(spec, op, now, px, scale);
     }
+    if (!playing) { playT0 = null; lastNow = null; }
+    if (onPlaying) onPlaying(playing);
     return live;
   }
 
@@ -1074,6 +1104,8 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     pointOf: key => point.get(key),
     // paint a coming state and build its overlays and labels in idle time, so its first frame does no work
     prepare(i) { if (i >= -1 && i < scenes.length) { texturesOf(i); terrainOf(i); overlayFor(i); markersFor(i); patchOf(i); } },
+    // start the playing clock again from its first year (the reader has just entered the chapter)
+    replay() { playT0 = null; lastNow = null; dirty = true; },
     // the height profile along a section line: { prof: [{ d km, h m }], total km }, or null without the site's heights
     async profile(site, from, to) { const dem = await demOf(site); return dem ? sectionOf(dem, from, to, 1) : null; },
     stats,

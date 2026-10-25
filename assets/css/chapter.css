@@ -462,3 +462,18 @@
 .is-past .ribbon, .is-past .world__legend, .is-past .world__labels { opacity: 0 !important; pointer-events: none; transition: opacity .4s; }
 /* phones: long map labels wrap instead of running off the screen */
 @media (max-width: 520px) { .world__marker span { white-space: normal; max-width: 46vw; line-height: 1.3; } }
+
+/* sound: the loader's two ways in, and the toggle in the nav bar */
+.loader__gate { position: absolute; left: 50%; bottom: 16vh; transform: translateX(-50%); width: min(560px, calc(100vw - 2 * var(--gutter)));
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; opacity: 0; animation: gate-in .9s var(--ease) .15s forwards; }
+@keyframes gate-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.loader.is-gate .loader__line, .loader.is-gate .loader__foot { opacity: 0; transition: opacity .5s; }
+.loader__go { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px; border-radius: 999px; cursor: pointer;
+  font: 500 15px/1 var(--sans); color: #fff; background: rgb(255 255 255 / .06); border: 1px solid rgb(255 255 255 / .18);
+  transition: background .3s, border-color .3s, transform .4s var(--ease); }
+.loader__go:hover { border-color: rgb(255 255 255 / .4); transform: translateY(-1px); }
+.loader__go.is-primary { background: color-mix(in oklab, var(--acc) 26%, rgb(9 10 16)); border-color: color-mix(in oklab, var(--acc) 70%, transparent); }
+.loader__go:focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; }
+.loader__hint { flex-basis: 100%; text-align: center; color: rgb(255 255 255 / .62); }
+.sound-btn[aria-pressed="true"] { color: var(--acc); }
+@media (prefers-reduced-motion: reduce) { .loader__gate { animation: none; opacity: 1; } }
