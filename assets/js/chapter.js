@@ -181,13 +181,8 @@ function sceneHTML(s, i) {
 }
 
 $('[data-scenes]').innerHTML = scenes.map(sceneHTML).join('');
-// the review status under the chapter title (KQ6 names no subject in its data: the page's <body data-subject> does)
-const REVIEWER = { history: 'a History teacher', economics: 'an Economics teacher', geography: 'a Geography teacher' };
-const subject = data.subject || document.body.dataset.subject;
-if (subject && $('.ch-hero .ch-wrap')) {
-  if (data.status === 'draft') $('.ch-hero .ch-wrap').insertAdjacentHTML('beforeend', '<p class="mono ch-draft">Draft · not yet reviewed by a teacher</p>');
-  else if (data.status === 'reviewed') $('.ch-hero .ch-wrap').insertAdjacentHTML('beforeend', `<p class="mono ch-draft is-reviewed">Reviewed by ${REVIEWER[subject] || 'a teacher'} · October 2026</p>`);
-}
+// a draft says so under the chapter title; a reviewed chapter shows nothing
+if (data.subject && data.status === 'draft' && $('.ch-hero .ch-wrap')) $('.ch-hero .ch-wrap').insertAdjacentHTML('beforeend', '<p class="mono ch-draft">Draft · not yet reviewed by a teacher</p>');
 
 // end of chapter: one-page summary, quick checks, every source
 $('[data-sum]').innerHTML = data.toolkit.summary.map(x => `<p>${x}</p>`).join('');

@@ -203,7 +203,7 @@ CHAPTERS = '''
 # Economics chapter (economics/macro-policy.html), shown under the Economics hero
 ECON_CHAPTERS = '''
 <section class="chapters" data-tone="dark"><div class="wrap">
-  <p class="eyebrow">Scroll chapter · Topic 4.1–4.4 · reviewed by an Economics teacher</p>
+  <p class="eyebrow">Scroll chapter · Topic 4.1–4.4</p>
   <div class="chapters__grid">
     <a class="chapter-card" href="economics/macro-policy.html" data-reveal>
       <span class="chapter-card__tag">Government and the macroeconomy · 41 scenes · about 60 minutes</span>
