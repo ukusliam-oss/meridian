@@ -111,20 +111,17 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   switches to depth, volcano, boundary or intensity keys for these scenes. Markers on a landscape stand on its heights.
 
 ## Sound
-- `assets/js/sound.js`: everything is synthesised with Web Audio (no audio files). A chapter opts in with `sound: true`
-  (only Tectonic hazards so far): its loader then waits with "Enter with sound" (the default) and "Enter quietly",
-  because browsers start audio only from a tap; the choice is kept (`store` 'sound') and a speaker button in the nav
-  bar switches it. Master → limiter; a generated reverb; suspended while the tab is hidden.
-- Earthquakes: the engine's `onQuakes` reports every quake the playing clock passes (0.8 years a second, restarted
-  from the first year by `world.replay()` when the reader enters), with its screen pan and whether it is on the near
-  side. Magnitude 7+ rings a struck stone (inharmonic bell on an A minor pentatonic, lower for deeper quakes, louder and
-  longer for larger ones), 8+ adds a deep boom, smaller quakes are grains of filtered-noise rain; a far-side quake is
-  quieter and duller. The clock passes about 400 quakes a second, so voices have budgets that refill with time (about
-  5 stones and 30 grains a second, largest first, every boom). `onPlaying` starts a low Earth drone under the scene;
-  each new year ticks. Headless checks count scheduled voices by wrapping `createOscillator` and `createBufferSource`.
-- Plan: sound is heard when the map moves and stays quiet while the reader reads (no lyrics or melody under text).
-  Still to come: camera and arrival sounds for every chapter, per-subject beds that duck while a panel is read, sounds
-  for checks and chains.
+- `assets/js/sound.js`: an ambient soundscape synthesised with Web Audio (no audio files), modelled on the measured
+  character of emotion-agency.com's recorded loops: dark (most energy under 300 Hz), about −12 to −17 dBFS, slow swells.
+  Layers: a stereo wash of brown and white noise that breathes; a pad (four voices of three detuned sawtooths, a slow
+  progression in D, low-passed) drowned in a generated 7 s hall; a sub; wind opened by scroll speed; a whoosh when the
+  camera leaves a held scene; a boom on entering and at each new part. The bed sinks after 1.5 s without scrolling.
+- Every chapter has `sound: true`: its loader waits with "Enter with sound" (the default) and "Enter quietly", because
+  browsers start audio only from a tap; the choice is kept (`store` 'sound') and a speaker in the nav bar switches it.
+  `chapter.js` calls `motion(progress, part)` on each scroll step. Suspended while the tab is hidden.
+- The first try (one voice per earthquake, synthetic bells and noise grains) sounded cheap and was removed: sound here
+  is an atmosphere, not data. To hear a change without a speaker check, record the real output in the headless browser
+  (tee every connection to the destination into a ScriptProcessor, write a WAV) and measure it with `afconvert`.
 
 ## World engine
 - `src/world/engine.js` → `assets/js/world.js`, `src/world/paint-worker.js` → `assets/js/world-paint.js` (`npm run world`

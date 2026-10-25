@@ -498,14 +498,15 @@ function gate(enter) {
   box.className = 'loader__gate';
   box.innerHTML = `<button class="loader__go is-primary" type="button" data-sound="1">${SPEAKER(true)}<span>Enter with sound</span></button>
     <button class="loader__go" type="button" data-sound="0"><span>Enter quietly</span></button>
-    <p class="mono loader__hint">The map is heard as well as seen. Sound can be turned off at any time.</p>`;
+    <p class="mono loader__hint">Best with headphones. Sound can be turned off at any time.</p>`;
   loader.classList.add('is-gate'); loader.appendChild(box);
   const def = box.querySelector(snd.sound.enabled ? '[data-sound="1"]' : '[data-sound="0"]');
   def.classList.add('is-primary'); box.querySelectorAll('.loader__go').forEach(b => b !== def && b.classList.remove('is-primary'));
   requestAnimationFrame(() => def.focus({ preventScroll: true }));
   box.addEventListener('click', e => {
     const b = e.target.closest('[data-sound]'); if (!b) return;
-    snd.start(b.dataset.sound === '1');
+    const on = b.dataset.sound === '1';
+    snd.start(on).then(() => { if (on) snd.boom(1); });
     if (world && world.replay) world.replay();
     enter();
   });
@@ -530,9 +531,7 @@ async function start() {
     const [{ createWorld }, borders] = await Promise.all([import('./world.js'), loadBorders()]);
     buildEngineScenes();
     setPct(0.96);
-    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain, layers: CFG.layers, light: CFG.light,
-      onQuakes: snd ? (list, kind, year) => snd.quakes(list, kind, year) : null,
-      onPlaying: snd ? (() => { let was = false; return on => { if (on !== was) { was = on; snd.drone(on); } }; })() : null });
+    world = await createWorld($('[data-world]'), { scenes: eScenes, hero, data: borders, dataUrl: CFG.borders, values: VALUES, accent: CFG.accent, reduced, relief: CFG.relief, terrain: CFG.terrain, layers: CFG.layers, light: CFG.light });
     window.__meridianWorld = world; // stats for checks in the preview
     if (world) for (const s of scenes) if (s.map && s.map.section && s.map.relief3d) {
       const fig = $(`[data-xs="${s.id}"]`), x = s.map.section;
@@ -555,6 +554,7 @@ async function start() {
     // past the last scene (lab, toolkit): the map's ribbon, legend and labels step aside
     root.classList.toggle('is-past', y + innerHeight * 0.5 > holds[N - 1][1] + innerHeight * 0.35);
     if (world) world.setProgress(ep);
+    if (snd) snd.motion(p, p < 0 ? -1 : scenes[Math.min(N - 1, Math.round(p))].part);
     updateUI(p);
     updatePanels(y, ep, p < 0 ? 0 : Math.min(N - 1, Math.round(p)));
   });

@@ -47,6 +47,7 @@ export default {
   title: 'Eastern Europe, 1948–c.1989',
   question: 'How secure was the USSR\'s control over Eastern Europe, 1948–c.1989?',
   status: 'reviewed',
+  sound: true, // assets/js/sound.js
 
   focusPoints: [
     { id: 'FP1', text: 'Why was there opposition to Soviet control in Hungary in 1956 and Czechoslovakia in 1968, and how did the USSR react to this opposition?' },

@@ -8,7 +8,7 @@ const WEO = 'imf-weo', BIS = 'bis', GINI = 'owid-gini', CO2 = 'owid-co2', SYL = 
 const WORLD = { lat: 18, lon: 12, alt: 17000 };
 
 export default {
-  id: 'macro-policy', subject: 'economics', status: 'reviewed', borders: 'modern', accent: '#46d6a0',
+  id: 'macro-policy', subject: 'economics', status: 'reviewed', sound: true, borders: 'modern', accent: '#46d6a0',
   title: 'Government and the macroeconomy', question: 'How do governments manage the whole economy?',
   hero: { camera: { lat: 22, lon: 20, alt: 17500 } },
   ribbon: ['1980-01-01', '2027-01-01'], heroDate: '2019-01-01',
