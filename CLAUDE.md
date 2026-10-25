@@ -66,9 +66,9 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   (both Datenlizenz Deutschland Zero 2.0). It keeps only state versions valid on a scene date of some
   `assets/js/data/history/kq*.js`, so rerun it after adding a chapter. Relief: Natural Earth SR_50M via `sips`.
 
-## Economics scroll chapter (Topic 4.1–4.4, draft)
+## Economics scroll chapter (Topic 4.1–4.4)
 - `economics/macro-policy.html` reuses `chapter.js`: `<body data-chapter>` names the data file
-  (`assets/js/data/economics/macro-policy.js`, 41 scenes, status draft); anything a chapter leaves out falls back to KQ6's
+  (`assets/js/data/economics/macro-policy.js`, 41 scenes, reviewed by an Economics teacher on 2026-10-25); anything a chapter leaves out falls back to KQ6's
   values. Linked from the Economics hub through `ECON_CHAPTERS` in `tools/pages.py`. Case notes and URLs:
   `../Meridian Economics research notes.md` (outside the repo).
 - Scene maps can colour countries by an indicator (`map.data`), raise needles (`map.spikes`), step through years in one
@@ -236,11 +236,11 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   it lists text under WCAG AA. Load the theme fresh (localStorage `meridian:theme`) and turn transitions off first: a
   hidden preview pane never runs colour transitions, so switching theme in place gives false failures. Glass bars are
   measured against the page colour, not what is behind them.
-- Economics: the chapter and the lab are drafts, not yet reviewed by an Economics teacher. The Section A data room
+- Economics: the chapter and the lab were reviewed by an Economics teacher on 2026-10-25. The Section A data room
   (`economics/data-room.html`) from the plan is not built. The chapter is live (pushing `main` deploys everything) and
   linked from the Economics hub with a "draft, not yet reviewed by a teacher" label; `engine-test.html` is reachable
   but unlinked and noindex.
 - Geography: Tectonic hazards is a draft, not yet reviewed by a Geography teacher. Other topics are not started.
   `tools/build-terrain.mjs` reads the Geography chapters too: rerun it after adding scenes (slow: it downloads DEM).
-- History chapters: only KQ6 exists (status draft, not yet teacher-reviewed). Scenes have no field yet for the plan's
+- History chapters: only KQ6 exists (with its Paper 2 room, reviewed by a History teacher on 2026-10-25). Scenes have no field yet for the plan's
   "exam link" layer.

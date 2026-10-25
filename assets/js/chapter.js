@@ -181,7 +181,11 @@ function sceneHTML(s, i) {
 }
 
 $('[data-scenes]').innerHTML = scenes.map(sceneHTML).join('');
-if (data.subject && data.status === 'draft' && $('.ch-hero .ch-wrap')) $('.ch-hero .ch-wrap').insertAdjacentHTML('beforeend', '<p class="mono ch-draft">Draft · not yet reviewed by a teacher</p>');
+const SUBJECT_NAME = { history: 'History', economics: 'Economics', geography: 'Geography' };
+if (data.subject && $('.ch-hero .ch-wrap')) {
+  if (data.status === 'draft') $('.ch-hero .ch-wrap').insertAdjacentHTML('beforeend', '<p class="mono ch-draft">Draft · not yet reviewed by a teacher</p>');
+  else if (data.status === 'reviewed') $('.ch-hero .ch-wrap').insertAdjacentHTML('beforeend', `<p class="mono ch-draft is-reviewed">Reviewed by ${SUBJECT_NAME[data.subject] ? `a ${SUBJECT_NAME[data.subject]}` : 'a'} teacher · October 2026</p>`);
+}
 
 // end of chapter: one-page summary, quick checks, every source
 $('[data-sum]').innerHTML = data.toolkit.summary.map(x => `<p>${x}</p>`).join('');

@@ -1,14 +1,14 @@
 // Economics 0455, Topic 4.1–4.4: Government and the macroeconomy. One scroll chapter over a globe coloured with data.
 // Map colours, chart lines and value labels come from assets/data/econ.json (IMF WEO October 2026, BIS, OWID), so
 // figures that also appear in the text were read from the same file. Case facts were checked against two sources
-// where possible; the working notes are kept outside the repo. Status: draft, not yet reviewed by an Economics teacher.
+// where possible; the working notes are kept outside the repo. Status: reviewed by an Economics teacher on 2026-10-25.
 // Checked by tools/check-econ.mjs (fields, sources, indicators, syllabus coverage, no em dashes).
 
 const WEO = 'imf-weo', BIS = 'bis', GINI = 'owid-gini', CO2 = 'owid-co2', SYL = 'cie-0455';
 const WORLD = { lat: 18, lon: 12, alt: 17000 };
 
 export default {
-  id: 'macro-policy', subject: 'economics', status: 'draft', borders: 'modern', accent: '#46d6a0',
+  id: 'macro-policy', subject: 'economics', status: 'reviewed', borders: 'modern', accent: '#46d6a0',
   title: 'Government and the macroeconomy', question: 'How do governments manage the whole economy?',
   hero: { camera: { lat: 22, lon: 20, alt: 17500 } },
   ribbon: ['1980-01-01', '2027-01-01'], heroDate: '2019-01-01',

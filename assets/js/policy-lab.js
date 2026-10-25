@@ -72,7 +72,7 @@ export function mountPolicyLab(el, model, { reduced = reducedPref } = {}) {
     <header class="plab__head">
       <p class="mono plab__kicker">${esc(model.kicker)}</p>
       <p class="plab__intro">${esc(model.intro)}</p>
-      <details class="plab__warn"><summary class="mono">${esc(model.warning)} · draft, not yet reviewed by an Economics teacher</summary><p>${esc(model.warningMore)}</p></details>
+      <details class="plab__warn"><summary class="mono">${esc(model.warning)}${model.status === 'draft' ? ' · draft, not yet reviewed by an Economics teacher' : ''}</summary><p>${esc(model.warningMore)}</p></details>
     </header>
     <div class="plab__modes" role="group" aria-label="Scenario">${modes.map(m => `<button class="plab__mode mono" type="button" data-mode="${m.id}">${esc(m.label)}</button>`).join('')}</div>
     <div class="plab__grid">

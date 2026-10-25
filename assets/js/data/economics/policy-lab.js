@@ -1,5 +1,5 @@
 // Policy lab model for the Economics chapter (0455 Topic 4.1–4.4). Read by assets/js/policy-lab.js.
-// A simplified model for learning, not a forecast. Status: draft, not yet reviewed by an Economics teacher.
+// A simplified model for learning, not a forecast. Status: reviewed by an Economics teacher on 2026-10-25.
 //
 // How it works
 // - Time runs in quarters (0 to 24 = six years). Each dial is measured from its `neutral` position,
@@ -23,7 +23,7 @@
 
 export default {
   id: 'policy-lab',
-  status: 'draft',
+  status: 'reviewed',
   kicker: 'Policy lab · Topic 4.1–4.4',
   title: { lead: 'Policy lab:', rest: 'five tools, six aims' },
   intro: 'Watch what governments did in the 2009 recession and the 2022 inflation, or move the dials to test your own policy. Each gauge shows one macroeconomic aim.',

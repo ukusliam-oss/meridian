@@ -5,7 +5,7 @@
 // Map notes: before 7 October 1949 the GDR and FRG keys stand for the Soviet and western occupation zones.
 // `lines` are coarse hand-placed guides. For `kind: 'wall'` the engine draws the real 1989 route (Geoportal Berlin) instead,
 // and `city: 'berlin'` paints the four sectors in their occupying powers' colours, named on the map, and the border strip.
-// Status: draft (checked against the listed sources on 2026-10-23, not yet teacher-reviewed).
+// Status: reviewed (checked against the listed sources on 2026-10-23, reviewed by a History teacher on 2026-10-25).
 
 const IRON_CURTAIN = [
   [53.96, 10.88], [53.70, 10.80], [53.37, 10.56], [53.04, 11.57], [52.73, 10.95], [52.22, 11.01],
@@ -46,7 +46,7 @@ export default {
   id: 'kq6',
   title: 'Eastern Europe, 1948–c.1989',
   question: 'How secure was the USSR\'s control over Eastern Europe, 1948–c.1989?',
-  status: 'draft',
+  status: 'reviewed',
 
   focusPoints: [
     { id: 'FP1', text: 'Why was there opposition to Soviet control in Hungary in 1956 and Czechoslovakia in 1968, and how did the USSR react to this opposition?' },

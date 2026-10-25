@@ -3,7 +3,7 @@
 // sources, (a) 7, (b) 8, (c) 8, (d) 8, (e) 9 = 40 marks, AO1 and AO3. Level descriptors are paraphrased from those
 // mark schemes; the question wording, indicative content and example answers are our own.
 // All six sources are public domain (see `references`), so they are printed in full as extracts.
-// Status: draft (sources checked 2026-10-23, not yet teacher-reviewed).
+// Status: reviewed (sources checked 2026-10-23, reviewed by a History teacher on 2026-10-25).
 
 export default {
   id: 'kq6-paper2',
@@ -13,7 +13,7 @@ export default {
   topic: 'How secure was the USSR\'s control over Eastern Europe, 1948–c.1989?',
   time: 105,
   marks: 40,
-  status: 'draft',
+  status: 'reviewed',
 
   how: 'Read the background and all six sources first (about 10 minutes). Then answer every part. Allow about 2 minutes per mark. Open the mark scheme for each part only after you have written or planned your answer. Nothing here is saved.',
 
