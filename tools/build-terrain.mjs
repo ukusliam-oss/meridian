@@ -23,7 +23,8 @@ const LEVELS = [
   { z: 2, ppd: 512, deg: 1, ov: 1, exag: 1.8, pick: fp => fp.kmPerPx < 0.45, maxAlt: 1e9 },
 ];
 const SCREENS = [[1440, 900], [390, 844], [1920, 1080], [760, 1000]];
-const CHAPTERS = ['assets/js/data/history/kq6.js', 'assets/js/data/economics/macro-policy.js'];
+const CHAPTERS = ['assets/js/data/history/kq6.js', 'assets/js/data/economics/macro-policy.js',
+  ...readdirSync('assets/js/data/geography').filter(f => f.endsWith('.js') && f !== 'engine-test.js').map(f => `assets/js/data/geography/${f}`)];
 
 // ── which tiles: every tile a scene's footprint touches, on any of the reference screens ──
 const want = new Map(LEVELS.map(L => [L.z, new Set()]));

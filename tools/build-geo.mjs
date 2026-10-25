@@ -4,8 +4,10 @@
 //   volcanoes.json  Holocene volcanoes: Smithsonian Global Volcanism Program, Volcanoes of the World (cited as asked)
 //   plates.json     plate boundaries by type with relative speeds: PB2002 (Bird 2003) as GeoJSON by Ahlenius, ODC-BY 1.0
 //   natural.json    the natural globe for Geography (no states): Natural Earth 1:10m land, lakes, rivers and the 200 m
-//                   bathymetry worldwide, simplified evenly (borders.json keeps detail only around Europe). The inputs
+//                   bathymetry worldwide, 10% of points kept, and 60% wherever a Geography scene looks from below 400 km
+//                   (its footprint on four reference screens; rebuild after moving a camera). The inputs
 //                   are the Natural Earth shapefiles tools/build-maps.mjs already caches in tools/.cache/ne/
+//   shake/{event}.json  shaking-intensity isolines (Modified Mercalli) of an earthquake: USGS ShakeMap, public domain
 //   dem/{site}.png  a patch of real height for a 3D landscape scene: Copernicus DEM GLO-30, heights packed in RGB
 //                   (h = R·65536 + G·256 + B − 1000, whole metres) so the browser reads them losslessly; dem/{site}.json
 //                   gives the box, size and height range
@@ -17,6 +19,9 @@ import { topology } from 'topojson-server';
 import { feature } from 'topojson-client';
 import { presimplify, simplify, quantile } from 'topojson-simplify';
 import { geoArea } from 'd3-geo';
+import { readdirSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import { footprint } from '../src/world/view.js';
 
 const CACHE = 'tools/.cache/geo', OUT = 'assets/data/geo';
 mkdirSync(CACHE, { recursive: true }); mkdirSync(`${OUT}/dem`, { recursive: true });
@@ -85,6 +90,23 @@ const r2 = v => Math.round(v * 100) / 100;
   console.log('plates:', Object.entries(out).map(([k, v]) => `${k} ${v.length}`).join(', '));
 }
 
+// ── ShakeMap isolines: the intensity contours of an earthquake, lines rounded to 0.01° and grouped by value ──
+for (const ev of ['us6000jllz']) {
+  mkdirSync(`${OUT}/shake`, { recursive: true });
+  const detail = JSON.parse(await cached(`${ev}.geojson`, `https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=${ev}&format=geojson`));
+  const sm = detail.properties.products.shakemap[0], url = sm.contents['download/cont_mmi.json'].url;
+  const cont = JSON.parse(await cached(`${ev}-cont_mmi.json`, url));
+  const levels = {};
+  for (const f of cont.features) {
+    const v = f.properties.value, g = f.geometry; if (!g || v < 4 || v % 1) continue; // whole Mercalli levels only
+    const lines = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+    (levels[v] = levels[v] || []).push(...lines.map(l => l.map(([x, y]) => [r2(x), r2(y)])));
+  }
+  const [lon, lat, depth] = detail.geometry.coordinates;
+  writeFileSync(`${OUT}/shake/${ev}.json`, JSON.stringify({ source: `USGS ShakeMap, ${detail.properties.title}`, mag: detail.properties.mag, epicentre: [r2(lat), r2(lon)], depth, levels }));
+  console.log(`shake ${ev}: levels ${Object.keys(levels).join(' ')}`);
+}
+
 // ── natural globe ──
 {
   const ne = async n => (await shapefile.read(`tools/.cache/ne/${n}/${n}.shp`, `tools/.cache/ne/${n}/${n}.dbf`)).features;
@@ -103,8 +125,18 @@ const r2 = v => Math.round(v * 100) / 100;
     rivers: fc((await ne('ne_10m_rivers_lake_centerlines')).filter(f => f.properties.scalerank <= 7).map(f => ({ type: 'Feature', geometry: f.geometry, properties: { r: f.properties.scalerank } }))),
     deep: fc((await ne('ne_10m_bathymetry_K_200')).map(area)),
   }); // not quantised here: points are dropped from absolute coordinates, then the result is quantised
-  const ps = presimplify(t), min = quantile(ps, KEEP);
-  ps.arcs = ps.arcs.map(arc => arc.filter((q, i) => i === 0 || i === arc.length - 1 || q[2] >= min));
+  // close views: the boxes Geography scenes below 400 km show, on the reference screens
+  const close = [];
+  for (const f of readdirSync('assets/js/data/geography').filter(f => f.endsWith('.js'))) {
+    const { default: ch } = await import(pathToFileURL(`assets/js/data/geography/${f}`).href);
+    for (const sc of ch.scenes || []) if (sc.camera.alt <= 400) for (const [W, H] of [[1440, 900], [390, 844], [1920, 1080], [760, 1000]]) {
+      const fp = footprint(sc.camera, W, H); if (fp.box) close.push(fp.box);
+    }
+  }
+  const inClose = ([x, y]) => close.some(([w, so, e, n]) => x >= w && x <= e && y >= so && y <= n);
+  const ps = presimplify(t), min = quantile(ps, KEEP), minClose = quantile(ps, 0.6);
+  ps.arcs = ps.arcs.map(arc => arc.filter((q, i) => i === 0 || i === arc.length - 1 || q[2] >= (inClose(q) ? minClose : min)));
+  console.log(`natural: ${close.length} close boxes`);
   const st = topology(Object.fromEntries(Object.keys(t.objects).map(k => [k, fc(feature(ps, ps.objects[k]).features.filter(f => f.geometry))])), 1e5);
   st.waterBox = [-180, -90, 180, 90];
   st.attribution = 'Natural Earth 1:10m land, lakes, rivers and bathymetry (public domain).';
@@ -114,23 +146,53 @@ const r2 = v => Math.round(v * 100) / 100;
 }
 
 // ── height patches for 3D landscape scenes ──
+// center [lat, lon], half-size [lat°, lon°] (about square on the ground), output width in pixels
 const SITES = {
   fuji: { center: [35.3606, 138.7274], half: [0.12, 0.15], size: 640 },
+  thingvellir: { center: [64.255, -21.1], half: [0.11, 0.25], size: 480 },
+  eyjafjallajokull: { center: [63.63, -19.62], half: [0.1, 0.22], size: 480 },
+  merapi: { center: [-7.56, 110.44], half: [0.13, 0.13], size: 480 },
+  maunaloa: { center: [19.45, -155.55], half: [0.42, 0.45], size: 520 },
+  paricutin: { center: [19.493, -102.251], half: [0.05, 0.053], size: 400 },
+  everest: { center: [27.988, 86.925], half: [0.14, 0.16], size: 520 },
+  sanandreas: { center: [35.18, -119.72], half: [0.13, 0.16], size: 480 },
 };
-for (const [name, s] of Object.entries(SITES)) {
+const ONLY = process.env.SITES ? process.env.SITES.split(',') : null;
+for (const [name, s] of Object.entries(SITES).filter(([k]) => !ONLY || ONLY.includes(k))) {
   const [clat, clon] = s.center, [hl, hn] = s.half, box = [clon - hn, clat - hl, clon + hn, clat + hl];
   const W = s.size, H = Math.round(s.size * hl / (hn * Math.cos(clat * Math.PI / 180)));
+  // per 1° tile only the window this site needs, read by range requests and cached per site
   const tiles = new Map();
   const tileOf = async (lat, lon) => {
     const key = `${lat}_${lon}`; if (tiles.has(key)) return tiles.get(key);
     const n = `Copernicus_DSM_COG_10_${lat < 0 ? 'S' : 'N'}${String(Math.abs(lat)).padStart(2, '0')}_00_${lon < 0 ? 'W' : 'E'}${String(Math.abs(lon)).padStart(3, '0')}_00_DEM`;
-    const file = `${CACHE}/${n}.f32`;
+    const file = `${CACHE}/${name}_${n}.f32`;
     let t;
-    if (existsSync(file)) { const b = readFileSync(file); t = { w: b.readUInt32LE(0), h: b.readUInt32LE(4), d: new Float32Array(b.buffer.slice(b.byteOffset + 8)) }; }
+    if (existsSync(file)) { const b = readFileSync(file); t = { x0: b.readInt32LE(0), y0: b.readInt32LE(4), w: b.readUInt32LE(8), h: b.readUInt32LE(12), tw: b.readUInt32LE(16), th: b.readUInt32LE(20), d: new Float32Array(b.buffer.slice(b.byteOffset + 24)) }; }
     else {
-      const im = await (await fromUrl(`https://copernicus-dem-30m.s3.amazonaws.com/${n}/${n}.tif`)).getImage(0);
-      t = { w: im.getWidth(), h: im.getHeight(), d: Float32Array.from(await im.readRasters({ interleave: true })) };
-      const head = Buffer.alloc(8); head.writeUInt32LE(t.w, 0); head.writeUInt32LE(t.h, 4);
+      // the coarsest overview that still has at least 1.5 source pixels per output pixel: a wide site (Mauna Loa) needs
+      // a quarter of the full resolution, so it downloads a sixteenth of the data
+      const need = 1.5 * W / (box[2] - box[0]); // source pixels per degree of longitude
+      let im = null;
+      for (let k = 0; k < 4 && !im; k++) { // opening the file can fail too
+        try {
+          const tiff = await fromUrl(`https://copernicus-dem-30m.s3.amazonaws.com/${n}/${n}.tif`);
+          im = await tiff.getImage(0);
+          for (let j = 1; j < await tiff.getImageCount(); j++) { const o = await tiff.getImage(j); if (o.getWidth() >= need) im = o; else break; }
+        } catch { im = null; console.log(`dem ${name}: retry opening ${k + 1}`); await new Promise(r => setTimeout(r, 3000 * (k + 1))); }
+      }
+      if (!im) throw new Error(`dem ${name}: ${n} could not be opened`);
+      const tw = im.getWidth(), th = im.getHeight();
+      const px = l => Math.floor((l - lon) * tw), py = l => Math.floor((lat + 1 - l) * th);
+      const x0 = Math.max(0, px(box[0]) - 2), x1 = Math.min(tw, px(box[2]) + 3), y0 = Math.max(0, py(box[3]) - 2), y1 = Math.min(th, py(box[1]) + 3);
+      let d = null;
+      for (let k = 0; k < 4 && !d; k++) { // range requests from here fail now and then: try again
+        try { d = Float32Array.from(await im.readRasters({ window: [x0, y0, x1, y1], interleave: true })); }
+        catch (e) { console.log(`dem ${name}: retry ${k + 1}`); await new Promise(r => setTimeout(r, 3000 * (k + 1))); }
+      }
+      if (!d) throw new Error(`dem ${name}: ${n} failed`);
+      t = { x0, y0, w: x1 - x0, h: y1 - y0, tw, th, d };
+      const head = Buffer.alloc(24); [t.x0, t.y0].forEach((v, k) => head.writeInt32LE(v, k * 4)); [t.w, t.h, t.tw, t.th].forEach((v, k) => head.writeUInt32LE(v, 8 + k * 4));
       writeFileSync(file, Buffer.concat([head, Buffer.from(t.d.buffer)]));
     }
     tiles.set(key, t); return t;
@@ -142,8 +204,8 @@ for (const [name, s] of Object.entries(SITES)) {
     for (let c = 0; c < W; c++) {
       const lon = box[0] + (c + 0.5) / W * (box[2] - box[0]);
       const t = await tileOf(Math.floor(lat), Math.floor(lon));
-      const fx = (lon - Math.floor(lon)) * t.w - 0.5, fy = (Math.floor(lat) + 1 - lat) * t.h - 0.5;
-      const x0 = Math.max(0, Math.min(t.w - 2, Math.floor(fx))), y0 = Math.max(0, Math.min(t.h - 2, Math.floor(fy))), ax = fx - x0, ay = fy - y0;
+      const fx = (lon - Math.floor(lon)) * t.tw - 0.5 - t.x0, fy = (Math.floor(lat) + 1 - lat) * t.th - 0.5 - t.y0;
+      const x0 = Math.max(0, Math.min(t.w - 2, Math.floor(fx))), y0 = Math.max(0, Math.min(t.h - 2, Math.floor(fy))), ax = Math.max(0, Math.min(1, fx - x0)), ay = Math.max(0, Math.min(1, fy - y0));
       const v = (x, y) => Math.max(-50, t.d[y * t.w + x]);
       const h = (v(x0, y0) * (1 - ax) + v(x0 + 1, y0) * ax) * (1 - ay) + (v(x0, y0 + 1) * (1 - ax) + v(x0 + 1, y0 + 1) * ax) * ay;
       const q = Math.round(h + 1000), o = (r * W + c) * 4;

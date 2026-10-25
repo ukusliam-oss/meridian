@@ -34,10 +34,13 @@ export function placeCamera(camera, a, b, t, W, H) {
   // a scene camera may set its own tilt (degrees), e.g. a city seen at a lower angle; otherwise it follows the altitude
   const auto = alt < 2500 ? 24 * (1 - alt / 2500) : 0;
   const tilt = ((a.tilt ?? auto) * (1 - t) + (b.tilt ?? auto) * t) * DEG;
+  // a scene over a raised 3D landscape names its ground height (km, after exaggeration): the camera looks at the ground
+  // there, not at sea level beneath it, and its altitude counts from that ground
+  const ground = ((a.ground || 0) * (1 - t) + (b.ground || 0) * t) / R_KM;
   const south = new Vector3().crossVectors(dir, new Vector3().crossVectors(UP, dir)).normalize().negate();
-  camera.position.copy(dir).multiplyScalar(d).addScaledVector(south, Math.tan(tilt) * (d - 1) * 1.2);
+  camera.position.copy(dir).multiplyScalar(d + ground).addScaledVector(south, Math.tan(tilt) * (d - 1) * 1.2);
   camera.up.copy(UP);
-  camera.lookAt(tmp.copy(dir).multiplyScalar(1 - smooth(2500, 6000, alt)));
+  camera.lookAt(tmp.copy(dir).multiplyScalar(1 + ground - smooth(2500, 6000, alt)));
   camera.near = Math.max(0.000002, (d - 1) * 0.15); camera.far = d + 3; camera.updateProjectionMatrix();
   return alt;
 }

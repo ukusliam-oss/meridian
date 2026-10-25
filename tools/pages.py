@@ -219,7 +219,25 @@ ECON_CHAPTERS = '''
     </a>
   </div>
 </div></section>'''
-SUBJECT_CHAPTERS = {'history': CHAPTERS, 'economics': ECON_CHAPTERS}
+GEO_CHAPTERS = '''
+<section class="chapters" data-tone="dark"><div class="wrap">
+  <p class="eyebrow">Scroll chapter · Topic 4 · draft, not yet reviewed by a teacher</p>
+  <div class="chapters__grid">
+    <a class="chapter-card" href="geography/tectonics.html" data-reveal>
+      <span class="chapter-card__tag">Tectonic hazards · 26 scenes · about 45 minutes</span>
+      <span class="chapter-card__title"><em>Why does the ground</em>shake and burn?</span>
+      <span class="chapter-card__text">Plates and boundaries, earthquakes and volcanoes, why people live with the risk, and how the impacts are managed, on a globe drawn from real earthquake, volcano and elevation data.</span>
+      <span class="chapter-card__go">Open the chapter →</span>
+    </a>
+    <a class="chapter-card chapter-card--paper" href="geography/tectonics.html#toolkit" data-reveal>
+      <span class="chapter-card__tag">Paper 1 practice · 2 questions · 7-mark answers</span>
+      <span class="chapter-card__title"><em>Then try:</em>earthquakes and volcanoes, exam style</span>
+      <span class="chapter-card__text">Resource questions, a 5-mark evaluation and a 7-mark answer on a named example, with mark schemes and Level 2 and Level 3 answers to compare.</span>
+      <span class="chapter-card__go">Open the practice →</span>
+    </a>
+  </div>
+</div></section>'''
+SUBJECT_CHAPTERS = {'history': CHAPTERS, 'economics': ECON_CHAPTERS, 'geography': GEO_CHAPTERS}
 
 for k, (name, code, eyebrow, lede, stats) in HEROES.items():
     main = f'''

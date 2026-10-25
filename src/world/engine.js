@@ -23,7 +23,7 @@ import { R_KM, clamp, smooth, ll, setViewport, placeCamera, footprint, textureSi
 import { geoInterpolate, geoDistance } from 'd3-geo';
 import { mesh } from 'topojson-client';
 import { DEG, dayNum, PALETTE, WALL_DOWN, featuresOf, countriesAt, runJob } from './paint.js';
-import { pointsLayer, plateLines, loadDem, terrainPatch, sectionOf, cutaway, PLATE_COLOR, DEPTH_STOPS, VOLCANO_COLOR } from './layers.js';
+import { pointsLayer, plateLines, loadDem, terrainPatch, sectionOf, cutaway, PLATE_COLOR, DEPTH_STOPS, VOLCANO_COLOR, MMI_COLOR, MMI_ROMAN } from './layers.js';
 
 export { PALETTE, ll };
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -408,7 +408,11 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
   const layerData = {};
   {
     const wants = new Set();
-    for (const s of [hero, ...scenes]) { for (const q of s.map.points || []) wants.add(q.id); if (s.map.plates) wants.add('plates'); }
+    for (const s of [hero, ...scenes]) {
+      for (const q of s.map.points || []) wants.add(q.id);
+      if (s.map.plates) wants.add('plates');
+      if (s.map.isolines && layers && layers.shake) layers[`shake:${s.map.isolines.id}`] = `${layers.shake}${s.map.isolines.id}.json`, wants.add(`shake:${s.map.isolines.id}`);
+    }
     await Promise.all([...wants].filter(k => layers && layers[k]).map(async k => { try { layerData[k] = await (await fetch(layers[k])).json(); } catch { /* the scene shows without it */ } }));
   }
   const isData = s => !!(values && s && s.map.data && values[s.map.data.id]);
@@ -649,6 +653,10 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     if (s.map.plates && layerData.plates) for (const [kind, lines] of plateLines(layerData.plates, s.map.plates)) {
       const m = fatLines(lines, PLATE_COLOR[kind], 1.8); g.add(m); items.push({ type: 'outline', m, mat: m.material });
     }
+    const shake = s.map.isolines && layerData[`shake:${s.map.isolines.id}`];
+    if (shake) for (const [v, lines] of Object.entries(shake.levels)) {
+      const m = fatLines(lines, MMI_COLOR[v] || '#fff', +v >= 8 ? 2.2 : 1.6); g.add(m); items.push({ type: 'outline', m, mat: m.material });
+    }
     if (isData(s) && (s.map.focus || []).length) {
       const rings = countriesAt(countries, s.map.borders).filter(f => s.map.focus.includes(f.properties.key)).flatMap(ringsOf);
       const m = fatLines(rings, PALETTE.focus, 2); g.add(m); items.push({ type: 'outline', m, mat: m.material });
@@ -831,6 +839,15 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
   // geography layers: depth colours and sizes for quakes, the volcano symbol, boundary colours, sources
   function pointsLegend(s) {
     const q = pointSpec(s, 'quakes'), v = pointSpec(s, 'volcanoes'), pl = s.map.plates && layerData.plates;
+    const sh = s.map.isolines && layerData[`shake:${s.map.isolines.id}`];
+    if (sh) {
+      const vs = Object.keys(sh.levels).map(Number).sort((a, b) => a - b);
+      return `<p class="mono world__ind"><span>Shaking intensity, Modified Mercalli scale</span> · <span class="world__yr"><b>M ${sh.mag}</b></span></p>
+        <div class="world__rampbox"><div class="world__ramp" style="background:linear-gradient(90deg,${vs.map(k => MMI_COLOR[k]).join(',')})"></div></div>
+        <div class="world__ticks mono">${vs.map(k => `<span>${MMI_ROMAN[k]}</span>`).join('')}</div>
+        <p class="mono world__unit">Each line joins places that shook equally hard</p>
+        <p class="world__src">${sh.source}.</p>`;
+    }
     const yrs = q && q.years ? `${q.years[0]}–${q.years[1]}` : '2000–2025';
     return `${q ? `<p class="mono world__ind"><span>Earthquakes, magnitude ${q.minMag || 5.5}+</span> · <span class="world__yr"><b>${yrs}</b></span></p>
         <div class="world__rampbox"><div class="world__ramp" style="background:linear-gradient(90deg,${DEPTH_STOPS.map(d => d[1]).join(',')})"></div></div>
@@ -844,8 +861,8 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     const s = w < 0.5 ? sA : sB;
     const spec = s && (s.map.data || s.map.spikes), sp = s && s.map.data && s.map.spikes;
     let key = spec && values && values[spec.id] ? `${spec.id}|${spec.domain}|${sp ? sp.id : ''}|${(s.map.focus || []).join()}` : '';
-    const pts = !key && s && ((s.map.points || []).length || (s.map.plates && layerData.plates));
-    if (pts) key = `pts|${JSON.stringify(s.map.points || [])}|${JSON.stringify(s.map.plates || '')}`;
+    const pts = !key && s && ((s.map.points || []).length || (s.map.plates && layerData.plates) || s.map.isolines);
+    if (pts) key = `pts|${JSON.stringify(s.map.points || [])}|${JSON.stringify(s.map.plates || '')}|${JSON.stringify(s.map.isolines || '')}`;
     if (pts && key !== legendKey) {
       legendKey = key; legend.classList.add('is-on');
       const box = legend.firstElementChild, next = box.cloneNode(false);
@@ -918,8 +935,11 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     const list = [...(s.map.markers || []), ...auto].map(m => {
       const el = document.createElement('div'); el.className = 'world__marker';
       el.innerHTML = `<i></i><span>${m.label}</span>${m.key ? '<b class="mono"></b>' : ''}`; labels.appendChild(el);
-      return { el, v: ll(m.at[0], m.at[1], 1.000002), key: m.key, val: m.key ? el.querySelector('b') : null, text: '' };
+      return { el, at: m.at, v: ll(m.at[0], m.at[1], 1.000002), key: m.key, val: m.key ? el.querySelector('b') : null, text: '' };
     });
+    // on a 3D landscape a marker stands on the raised ground, not at sea level under it
+    const r = s.map.relief3d;
+    if (r && list.length) demOf(r.site).then(dem => { if (!dem) return; list.forEach(m => { m.v = ll(m.at[0], m.at[1], 1 + (Math.max(0, dem.at(m.at[0], m.at[1])) * (r.exag || 1) + 30) / 6371000); }); dirty = true; });
     markerEls.set(i, list); return list;
   };
 
@@ -1057,6 +1077,7 @@ export async function createWorld(host, { scenes, hero, data, dataUrl, relief, t
     // the height profile along a section line: { prof: [{ d km, h m }], total km }, or null without the site's heights
     async profile(site, from, to) { const dem = await demOf(site); return dem ? sectionOf(dem, from, to, 1) : null; },
     stats,
+    camera, // for checks in the preview
     destroy() { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); paint.destroy(); renderer.dispose(); },
   };
 }

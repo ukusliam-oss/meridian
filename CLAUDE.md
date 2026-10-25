@@ -86,22 +86,29 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   no em dashes; it also runs `tools/check-lab.mjs`, which checks every model effect against the direction table).
 
 ## Geography scroll chapters (plan: `../Meridian Geography 설계 계획서.md`)
-- First chapter: Topic 4 Tectonic hazards (stage 0, the engine, is built; no chapter content yet). Test page:
-  `geography/engine-test.html` (unlinked, noindex) with `assets/js/data/geography/engine-test.js`, one scene per feature.
+- `geography/tectonics.html`: Topic 4 Tectonic hazards, 26 scenes from `assets/js/data/geography/tectonics.js` (status
+  draft), linked from the Geography hub through `GEO_CHAPTERS` in `tools/pages.py`. Its toolkit reuses the Earthquakes
+  set of `practice-geography.js` and adds a Volcanoes set; `chapter.js` loads `practice-{subject}.js` for the schemes.
+  Test page: `geography/engine-test.html` (unlinked, noindex), one scene per engine feature.
+- Checks before committing: `node tools/check-geo.mjs` (fields, sources, layers and landscapes exist, sections and
+  markers inside their landscape, raised heights said in the text, syllabus 4.1.1–4.4.4 complete, toolkit, no em dashes).
 - A Geography chapter sets `borders: 'none'` (a natural globe: no states, lighter land; `chapter.js` then loads
   `assets/data/geo/natural.json`) and `light: 'camera'` (the light rides with the camera, from the upper left; History and
   Economics keep the fixed light over the Atlantic, which leaves the Pacific dark).
 - `tools/build-geo.mjs` → `assets/data/geo/`: `quakes.json` (USGS ComCat, M5.5+, 2000–2025, 12,850; lon, lat, depth,
   mag, decimal year flat), `volcanoes.json` (Smithsonian GVP Holocene list, 1,214), `plates.json` (PB2002 steps chained
   by kind: divergent, convergent, collision, transform, with mean relative speed), `natural.json` (Natural Earth 1:10m
-  land, lakes and rivers up to rank 7, 200 m bathymetry, 10% of points kept: `KEEP=0.1`), and `dem/{site}.png|json`
-  (Copernicus GLO-30 heights packed in RGB, whole metres + 1000). Sites are listed in `SITES` in the build.
+  land, lakes and rivers up to rank 7, 200 m bathymetry; 10% of points kept, 60% inside the footprint of any Geography
+  scene below 400 km), `shake/{event}.json` (USGS ShakeMap intensity isolines by MMI level), and `dem/{site}.png|json`
+  (Copernicus GLO-30 heights packed in RGB, whole metres + 1000; only each site's window is read from the 1° COGs, cached
+  per site in `tools/.cache/geo/`). Sites are listed in `SITES` in the build; `SITES=a,b` rebuilds just those.
 - Scene map fields (engine in `src/world/layers.js`): `points: [{ id: 'quakes', minMag, years, play }, { id: 'volcanoes',
   types }]` (GPU points; quakes coloured by depth and sized by magnitude, `play` runs a clock through the years),
   `plates: true | [kinds]`, `relief3d: { site, exag, topo (0 landscape … 1 map), contours (m) }`, `section: { from, to,
   label }` (a white line over the landscape; the panel draws the profile from the same heights through
   `world.profile`), `cutaway: { lon }` (the northern octant from that longitude removed, layers on its faces; the earth
-  shader discards it through `uCut`). The legend switches to depth, volcano and boundary keys for these scenes.
+  shader discards it through `uCut`), `isolines: { id }` (ShakeMap intensity lines coloured IV to X). The legend
+  switches to depth, volcano, boundary or intensity keys for these scenes. Markers on a landscape stand on its heights.
 
 ## World engine
 - `src/world/engine.js` → `assets/js/world.js`, `src/world/paint-worker.js` → `assets/js/world-paint.js` (`npm run world`
@@ -233,9 +240,7 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   (`economics/data-room.html`) from the plan is not built. The chapter is live (pushing `main` deploys everything) and
   linked from the Economics hub with a "draft, not yet reviewed by a teacher" label; `engine-test.html` is reachable
   but unlinked and noindex.
-- Geography: only the engine test exists. Before the first chapter: landscape scenes need sharper coasts near their
-  site (at 40 km the 10% coastline is blocky, e.g. Suruga Bay under Fuji), `tools/build-terrain.mjs` must list the
-  Geography chapter files in `CHAPTERS` so their scenes get terrain tiles, and markers sit at sea level (on a 3D
-  landscape they float under the ground).
+- Geography: Tectonic hazards is a draft, not yet reviewed by a Geography teacher. Other topics are not started.
+  `tools/build-terrain.mjs` reads the Geography chapters too: rerun it after adding scenes (slow: it downloads DEM).
 - History chapters: only KQ6 exists (status draft, not yet teacher-reviewed). Scenes have no field yet for the plan's
   "exam link" layer.

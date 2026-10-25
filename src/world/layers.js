@@ -9,6 +9,9 @@ export const PLATE_COLOR = { divergent: '#4fd6c4', convergent: '#ff5a4f', collis
 // earthquake depth ramp (km): shallow quakes red, intermediate amber, deep ones cyan to violet
 export const DEPTH_STOPS = [[0, '#ff5a4f'], [70, '#ffb347'], [300, '#6fd3ff'], [700, '#8f86ff']];
 export const VOLCANO_COLOR = '#ff8a3d';
+// shaking intensity (Modified Mercalli, IV to X): pale yellow to deep red
+export const MMI_COLOR = { 4: '#fff3a3', 5: '#ffd166', 6: '#ffa94d', 7: '#ff7a3d', 8: '#ff4f3a', 9: '#e0233d', 10: '#a3123a' };
+export const MMI_ROMAN = { 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X' };
 
 const vert = /* glsl */`
   attribute vec4 aInfo;                 // magnitude (quakes), depth km, year, type (volcanoes)

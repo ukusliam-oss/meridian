@@ -18,7 +18,7 @@ const CFG = {
   // shaded terrain tiles for close and middle views (tools/build-terrain.mjs); a chapter can switch them off
   terrain: data.terrain === false ? null : '../assets/data/terrain/index.json',
   // Geography layers (tools/build-geo.mjs); the engine fetches only those a scene asks for
-  layers: { quakes: '../assets/data/geo/quakes.json', volcanoes: '../assets/data/geo/volcanoes.json', plates: '../assets/data/geo/plates.json', dem: '../assets/data/geo/dem/' },
+  layers: { quakes: '../assets/data/geo/quakes.json', volcanoes: '../assets/data/geo/volcanoes.json', plates: '../assets/data/geo/plates.json', dem: '../assets/data/geo/dem/', shake: '../assets/data/geo/shake/' },
   accent: data.accent || null,
   light: data.light || 'fixed',
 };
@@ -199,7 +199,7 @@ const prEl = $('[data-practice]');
 if (prEl) {
   if (data.toolkit.practiceSets) {
     // the mark-scheme rules and their source note are shared with the subject page's practice sets
-    Promise.all([import('./practice.js'), import('./data/practice-economics.js')]).then(([{ practice }, { default: base }]) =>
+    Promise.all([import('./practice.js'), import(`./data/practice-${data.subject || 'economics'}.js`)]).then(([{ practice }, { default: base }]) =>
       practice(prEl, { ...base, id: data.id, sets: data.toolkit.practiceSets }));
   } else prEl.closest('.ch-card').remove();
 }
