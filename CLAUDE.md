@@ -111,17 +111,21 @@ python3 tools/pages.py # regenerate index/history/economics/geography.html from 
   switches to depth, volcano, boundary or intensity keys for these scenes. Markers on a landscape stand on its heights.
 
 ## Sound
-- `assets/js/sound.js`: an ambient soundscape synthesised with Web Audio (no audio files), modelled on the measured
-  character of emotion-agency.com's recorded loops: dark (most energy under 300 Hz), about −12 to −17 dBFS, slow swells.
-  Layers: a stereo wash of brown and white noise that breathes; a pad (four voices of three detuned sawtooths, a slow
-  progression in D, low-passed) drowned in a generated 7 s hall; a sub; wind opened by scroll speed; a whoosh when the
-  camera leaves a held scene; a boom on entering and at each new part. The bed sinks after 1.5 s without scrolling.
+- `assets/js/sound.js`, synthesised with Web Audio (no audio files), modelled on measurements of Cartier's "Le Chœur
+  des Pierres" (one looped music bed, a hover sound, a click sound; nothing reacts to the scroll). Measured there: music
+  −41 to −49 dB RMS, peaks −26 dB; 81% of the energy in 80–320 Hz, almost nothing above 1 kHz; a still E major
+  pentatonic (E, F♯, B, C♯, G♯); stereo wider than mono (side/mid 1.2). Hover: B3 E5 G♯5 over ~5 s, 20 dB under the
+  music. Click: a high shimmer near A6.
+- Ours: eight voices (two detuned triangles and a soft sawtooth each) on three voicings of the same chord, every voice
+  panned hard to one side with its own slow swell, low-passed near 900 Hz, a quiet low root, a generated 6 s warm hall;
+  the voicing glides every 18–26 s. `bindUI()` chimes on hover of anything pressable and sparkles on clicks.
+  Measured on a recording (2026-10-25): −41 to −47 dB, peaks −26.6 dB, side/mid 1.09, centroid 165–265 Hz by voicing.
 - Every chapter has `sound: true`: its loader waits with "Enter with sound" (the default) and "Enter quietly", because
   browsers start audio only from a tap; the choice is kept (`store` 'sound') and a speaker in the nav bar switches it.
-  `chapter.js` calls `motion(progress, part)` on each scroll step. Suspended while the tab is hidden.
-- The first try (one voice per earthquake, synthetic bells and noise grains) sounded cheap and was removed: sound here
-  is an atmosphere, not data. To hear a change without a speaker check, record the real output in the headless browser
-  (tee every connection to the destination into a ScriptProcessor, write a WAV) and measure it with `afconvert`.
+  Suspended while the tab is hidden.
+- Tried and dropped: one voice per earthquake (cheap, too busy), and a loud dark noise bed with whooshes and booms
+  (−12 to −17 dB, sub-heavy). Keep levels measured, not guessed: record the real output in the headless browser (tee
+  every connection to the destination into a ScriptProcessor), then measure loudness, width and bands in the page.
 
 ## World engine
 - `src/world/engine.js` → `assets/js/world.js`, `src/world/paint-worker.js` → `assets/js/world-paint.js` (`npm run world`

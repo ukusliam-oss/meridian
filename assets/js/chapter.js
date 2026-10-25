@@ -506,7 +506,7 @@ function gate(enter) {
   box.addEventListener('click', e => {
     const b = e.target.closest('[data-sound]'); if (!b) return;
     const on = b.dataset.sound === '1';
-    snd.start(on).then(() => { if (on) snd.boom(1); });
+    snd.start(on);
     if (world && world.replay) world.replay();
     enter();
   });
@@ -525,7 +525,7 @@ function soundToggle() {
 async function start() {
   setPct(0.02);
   if (data.sound) {
-    try { snd = await import('./sound.js'); soundToggle(); } catch (err) { console.warn('Sound unavailable:', err); snd = null; }
+    try { snd = await import('./sound.js'); soundToggle(); snd.bindUI(); } catch (err) { console.warn('Sound unavailable:', err); snd = null; }
   }
   try {
     const [{ createWorld }, borders] = await Promise.all([import('./world.js'), loadBorders()]);
@@ -554,7 +554,6 @@ async function start() {
     // past the last scene (lab, toolkit): the map's ribbon, legend and labels step aside
     root.classList.toggle('is-past', y + innerHeight * 0.5 > holds[N - 1][1] + innerHeight * 0.35);
     if (world) world.setProgress(ep);
-    if (snd) snd.motion(p, p < 0 ? -1 : scenes[Math.min(N - 1, Math.round(p))].part);
     updateUI(p);
     updatePanels(y, ep, p < 0 ? 0 : Math.min(N - 1, Math.round(p)));
   });

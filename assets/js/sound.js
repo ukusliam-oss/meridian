@@ -1,19 +1,19 @@
-// Meridian sound: an ambient soundscape for the scroll chapters, synthesised with Web Audio (no audio files).
-// The character follows the sites that inspired it: dark and low (most of the energy under 300 Hz), loud enough to
-// surround, swelling slowly every half minute, with a whoosh when the camera flies and a boom on the way in.
-//   wash   white noise in stereo, darkened and slowly breathing: the air of the room
-//   pad    a detuned chord (four voices, three oscillators each) under a low-pass filter, drifting through a slow
-//          progression, drowned in a long reverb: the dream
-//   sub    a deep sine under the pad, rising with each swell
-//   wind   high noise that opens with the speed of the scroll
-//   whoosh a sweep of noise and a falling sub when the globe flies from one scene to the next
-//   boom   a deep hit with a long tail when the reader enters the chapter and at each new part
-// While the reader holds still on a panel the whole bed sinks, and it rises again when they move.
-// The browser lets sound start only after a tap, so a chapter with sound asks once, on its loader (start()); the choice
-// is kept per viewer (store 'sound') and the speaker in the nav bar switches it.
+// Meridian sound, synthesised with Web Audio (no audio files). Modelled on the measured character of Cartier's
+// "Le Chœur des Pierres": one quiet, warm, very wide choir-like bed that never moves much, a soft chime when the
+// pointer meets something to press, and a small sparkle when it is pressed. Nothing reacts to the scroll.
+//   measured on the reference: music −41 to −49 dB RMS (peaks −26 dB); 81% of the energy between 80 and 320 Hz, little
+//   below and almost nothing above 1 kHz; a still E major pentatonic (E, F♯, B, C♯, G♯) voiced from E2 to B3; more
+//   side than middle in the stereo. Hover: B3, E5, G♯5, fading over about 5 s. Click: a high shimmer around A6.
+//   bed    eight voices on E, B, F♯, G♯, C♯ (sus2 and add9 colours), each two detuned triangles and a soft sawtooth,
+//          low-passed near 700 Hz, every voice placed far left or far right with its own slow swell, into a long warm
+//          hall; the chord shifts between three close voicings of the same notes every 20 s or so
+//   chime  three sine partials per note, B3 E5 G♯5 (or a neighbour), long decay, mostly reverb
+//   spark  a few high sine glints and a breath of high noise, short
+// The browser lets sound start only after a tap, so a chapter asks once, on its loader (start()); the choice is kept
+// per viewer (store 'sound') and the speaker in the nav bar switches it.
 import { store, reduced } from './core.js';
 
-let ctx = null, master = null, bus = null, verbIn = null;
+let ctx = null, master = null, verbIn = null, dry = null;
 let enabled = store.get('sound', true);
 const listeners = new Set();
 export const sound = {
@@ -23,115 +23,84 @@ export const sound = {
 };
 const emit = () => listeners.forEach(fn => fn(enabled));
 const at = (param, v, t, tc) => param.setTargetAtTime(v, t ?? ctx.currentTime, tc);
+const hz = midi => 440 * Math.pow(2, (midi - 69) / 12);
 
-// ── buffers made in code ──────────────────────────────────────────────────────
-// white noise, one channel per side so the wash is wide
-function whiteBuf(seconds = 4) {
-  const n = ctx.sampleRate * seconds, b = ctx.createBuffer(2, n, ctx.sampleRate);
-  for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; }
-  return b;
-}
-// brown noise: white noise integrated with a little leak, deep and soft
-function brownBuf(seconds = 6) {
-  const n = ctx.sampleRate * seconds, b = ctx.createBuffer(2, n, ctx.sampleRate);
-  for (let c = 0; c < 2; c++) {
-    const d = b.getChannelData(c); let y = 0;
-    for (let i = 0; i < n; i++) { y = (y + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = y * 3.5; }
-    // fade the loop point so it never clicks
-    for (let i = 0; i < 2000; i++) { const g = i / 2000; d[i] *= g; d[n - 1 - i] *= g; }
-  }
-  return b;
-}
-// a large dark hall: 7 s of decaying noise, low-passed so the tail is warm, slightly different on each side
-function hall(seconds = 7) {
-  const n = Math.round(ctx.sampleRate * seconds), b = ctx.createBuffer(2, n, ctx.sampleRate), pre = Math.round(ctx.sampleRate * 0.03);
+// a warm hall: 6 s of decaying noise that darkens as it fades, different on each side for width
+function hall(seconds = 6) {
+  const n = Math.round(ctx.sampleRate * seconds), b = ctx.createBuffer(2, n, ctx.sampleRate), pre = Math.round(ctx.sampleRate * 0.04);
   for (let c = 0; c < 2; c++) {
     const d = b.getChannelData(c); let y = 0;
     for (let i = pre; i < n; i++) {
-      const t = (i - pre) / (n - pre), cut = 0.35 * Math.pow(1 - t, 1.5) + 0.03; // darker as it fades
+      const t = (i - pre) / (n - pre), cut = 0.22 * Math.pow(1 - t, 1.3) + 0.02;
       y += cut * ((Math.random() * 2 - 1) - y);
-      d[i] = y * Math.pow(1 - t, 2.2) * (1 - Math.exp(-(i - pre) / 600));
+      d[i] = y * Math.pow(1 - t, 1.8) * (1 - Math.exp(-(i - pre) / 1800));
     }
   }
   return b;
 }
 
-// ── the graph ───────────────────────────────────────────────────────────────
-const S = {};
+// ── the bed ─────────────────────────────────────────────────────────────────
+// three voicings of the same E major pentatonic colour (MIDI notes): open fifths low, sus2 and add9 above
+const VOICINGS = [
+  [40, 47, 52, 54, 59, 61, 64, 66], // E2 B2 E3 F#3 B3 C#4 E4 F#4
+  [40, 47, 54, 56, 59, 63, 64, 68], // E2 B2 F#3 G#3 B3 D#4 E4 G#4 (a touch of major seventh)
+  [35, 47, 52, 54, 59, 61, 66, 71], // B1 B2 E3 F#3 B3 C#4 F#4 B4
+];
+const S = { voices: [] };
 function build() {
   ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' });
   const comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = -10; comp.knee.value = 6; comp.ratio.value = 8; comp.attack.value = 0.01; comp.release.value = 0.4;
+  comp.threshold.value = -24; comp.knee.value = 10; comp.ratio.value = 3; comp.attack.value = 0.05; comp.release.value = 0.5;
   master = ctx.createGain(); master.gain.value = 0;
   master.connect(comp).connect(ctx.destination);
-  bus = ctx.createGain(); bus.gain.value = 1; bus.connect(master); // the bed: sinks while the reader reads
+  dry = ctx.createGain(); dry.gain.value = 0.55; dry.connect(master);
   const verb = ctx.createConvolver(); verb.buffer = hall();
-  verbIn = ctx.createGain(); verbIn.gain.value = 1;
-  const verbOut = ctx.createGain(); verbOut.gain.value = 0.9;
-  verbIn.connect(verb).connect(verbOut).connect(master);
+  verbIn = ctx.createGain(); verbIn.gain.value = 0.8; verbIn.connect(verb).connect(master);
 
-  // wash: brown noise for the body, a thin breath of white noise above it, both slowly opening and closing
-  const brown = ctx.createBufferSource(); brown.buffer = brownBuf(); brown.loop = true;
-  const bLp = ctx.createBiquadFilter(); bLp.type = 'lowpass'; bLp.frequency.value = 420; bLp.Q.value = 0.3;
-  const bG = ctx.createGain(); bG.gain.value = 0.22;
-  brown.connect(bLp).connect(bG); bG.connect(bus); bG.connect(verbIn);
-  const air = ctx.createBufferSource(); air.buffer = whiteBuf(); air.loop = true;
-  const aBp = ctx.createBiquadFilter(); aBp.type = 'bandpass'; aBp.frequency.value = 1800; aBp.Q.value = 0.5;
-  const aG = ctx.createGain(); aG.gain.value = 0.018;
-  air.connect(aBp).connect(aG); aG.connect(bus); aG.connect(verbIn);
-  // slow breathing of the wash
-  const lfo = ctx.createOscillator(), lfoG = ctx.createGain(); lfo.frequency.value = 0.045; lfoG.gain.value = 180;
-  lfo.connect(lfoG).connect(bLp.frequency);
-  brown.start(); air.start(); lfo.start();
-
-  // pad: four voices of three detuned sawtooths each, through one low-pass, mostly into the hall
-  const padLp = ctx.createBiquadFilter(); padLp.type = 'lowpass'; padLp.frequency.value = 520; padLp.Q.value = 0.7;
-  const padG = ctx.createGain(); padG.gain.value = 0;
-  const padDry = ctx.createGain(); padDry.gain.value = 0.35;
-  padLp.connect(padG); padG.connect(padDry).connect(bus); padG.connect(verbIn);
-  const voices = [0, 1, 2, 3].map(() => {
-    const g = ctx.createGain(); g.gain.value = 0.05; g.connect(padLp);
-    const oscs = [-9, 0, 8].map(cents => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.detune.value = cents + (Math.random() - 0.5) * 4; o.connect(g); o.start(); return o; });
-    return { g, oscs };
+  // the bed's own level: about −42 dB RMS at the speakers, as quiet as the reference (measured on a recording)
+  const bed = ctx.createGain(); bed.gain.value = 0;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 0.5;
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 45; hp.Q.value = 0.5; // little sub: the warmth sits above 80 Hz
+  bed.connect(hp).connect(lp); lp.connect(dry); lp.connect(verbIn);
+  VOICINGS[0].forEach((m, k) => {
+    const g = ctx.createGain(), p = ctx.createStereoPanner();
+    p.pan.value = (k % 2 ? 1 : -1) * (0.8 + Math.random() * 0.2); // wide: every voice leans hard to one side
+    g.gain.value = 0;
+    const oscs = [['triangle', -6, 1], ['triangle', 7, 1], ['sawtooth', 2, 0.26]].map(([type, cents, a]) => {
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = type; o.frequency.value = hz(m); o.detune.value = cents + (Math.random() - 0.5) * 3; og.gain.value = a;
+      o.connect(og).connect(g); o.start(); return o;
+    });
+    // each voice swells on its own slow cycle, so the chord shimmers like a held choir
+    const lfo = ctx.createOscillator(), lg = ctx.createGain();
+    lfo.frequency.value = 0.03 + Math.random() * 0.05; lg.gain.value = 0.35;
+    const base = ctx.createConstantSource(); base.offset.value = 0.65;
+    base.connect(g.gain); lfo.connect(lg).connect(g.gain); lfo.start(); base.start();
+    const lvl = ctx.createGain(); lvl.gain.value = k < 2 ? 0.0034 : 0.002; // the two lowest notes carry the warmth
+    g.connect(lvl).connect(p).connect(bed);
+    S.voices.push({ oscs });
   });
-  // sub: a sine an octave under the pad's root
-  const sub = ctx.createOscillator(), subG = ctx.createGain(); sub.type = 'sine'; subG.gain.value = 0;
-  sub.connect(subG).connect(bus); sub.start();
-
-  // wind: high noise opened by the speed of the scroll
-  const wind = ctx.createBufferSource(); wind.buffer = whiteBuf(); wind.loop = true;
-  const wHp = ctx.createBiquadFilter(); wHp.type = 'bandpass'; wHp.frequency.value = 900; wHp.Q.value = 0.6;
-  const wG = ctx.createGain(); wG.gain.value = 0;
-  wind.connect(wHp).connect(wG); wG.connect(bus); wG.connect(verbIn); wind.start();
-
-  Object.assign(S, { bLp, bG, padLp, padG, voices, sub, subG, wHp, wG });
-  setChord(0, 0.01);
-  progression();
-  swell();
+  // a quiet low root under the chord (the reference has a little body below 80 Hz)
+  const root = ctx.createOscillator(), rg = ctx.createGain();
+  root.type = 'sine'; root.frequency.value = hz(28); rg.gain.value = 0.001;
+  root.connect(rg).connect(bed); root.start();
+  Object.assign(S, { bed, lp, root });
+  at(bed.gain, 1, ctx.currentTime + 0.1, 3); // a slow bloom when the reader enters
+  drift();
   document.addEventListener('visibilitychange', () => { if (!ctx) return; if (document.hidden) ctx.suspend(); else if (enabled) ctx.resume(); });
 }
-
-// a slow progression in D, each chord held about 22 s and glided into: Dadd9, Bm(add11), Gmaj7(#11), Asus2
-const D2 = 73.42;
-const CHORDS = [[0, 7, 14, 16], [-3, 7, 10, 17], [-7, 7, 11, 18], [-5, 7, 12, 14]];
-let chordIx = 0;
-function setChord(k, glide = 5) {
-  const t = ctx.currentTime;
-  CHORDS[k].forEach((semi, v) => S.voices[v].oscs.forEach(o => at(o.frequency, D2 * Math.pow(2, semi / 12), t, glide)));
-  at(S.sub.frequency, D2 * Math.pow(2, CHORDS[k][0] / 12) / 2, t, glide);
-}
-function progression() {
-  setTimeout(() => { if (!ctx) return; chordIx = (chordIx + 1) % CHORDS.length; setChord(chordIx); progression(); }, 22000);
-}
-// swells: every 25–40 s the pad rises and opens, then settles, as the reference loops do
-function swell() {
-  if (!ctx) return;
-  const t = ctx.currentTime, high = 0.55 + Math.random() * 0.45;
-  at(S.padG.gain, 0.32 * high, t, 6);
-  at(S.padLp.frequency, 380 + 900 * high, t, 7);
-  at(S.subG.gain, 0.22 * high, t, 6);
-  setTimeout(() => { if (!ctx) return; const t2 = ctx.currentTime; at(S.padG.gain, 0.16, t2, 9); at(S.padLp.frequency, 420, t2, 9); at(S.subG.gain, 0.1, t2, 9); }, 12000 + Math.random() * 6000);
-  setTimeout(swell, 25000 + Math.random() * 15000);
+// every 18–26 s the voices glide to another voicing of the same notes, and the filter breathes a little
+let voicing = 0;
+function drift() {
+  setTimeout(() => {
+    if (!ctx) return;
+    voicing = (voicing + 1) % VOICINGS.length;
+    const t = ctx.currentTime;
+    VOICINGS[voicing].forEach((m, k) => S.voices[k].oscs.forEach(o => at(o.frequency, hz(m), t, 4)));
+    at(S.root.frequency, hz(VOICINGS[voicing][0] - 12), t, 4);
+    at(S.lp.frequency, 760 + Math.random() * 300, t, 6);
+    drift();
+  }, 18000 + Math.random() * 8000);
 }
 
 // call from a tap (the loader's buttons, the toggle)
@@ -141,7 +110,7 @@ export async function start(on = true) {
     if (!ctx) build();
     try { await ctx.resume(); } catch { /* blocked: stays silent */ }
     master.gain.cancelScheduledValues(ctx.currentTime);
-    at(master.gain, 0.9, ctx.currentTime, 0.8);
+    at(master.gain, 1, ctx.currentTime, 0.6);
   } else if (ctx) {
     at(master.gain, 0, ctx.currentTime, 0.25);
   }
@@ -150,59 +119,52 @@ export async function start(on = true) {
 export const toggle = () => start(!enabled);
 const live = () => ctx && enabled && ctx.state === 'running';
 
-// ── events ─────────────────────────────────────────────────────────────────
-// a deep hit with a long tail: entering the chapter, and each new part
-export function boom(strength = 1) {
-  if (!live()) return;
-  const t = ctx.currentTime + 0.02;
-  const o = ctx.createOscillator(), g = ctx.createGain();
-  o.type = 'sine'; o.frequency.setValueAtTime(58, t); o.frequency.exponentialRampToValueAtTime(29, t + 2.6);
-  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.75 * strength, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0008, t + 3.6);
-  o.connect(g); g.connect(master); g.connect(verbIn); o.start(t); o.stop(t + 3.8);
-  const n = ctx.createBufferSource(), lp = ctx.createBiquadFilter(), ng = ctx.createGain();
-  n.buffer = whiteBuf(2); lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t); lp.frequency.exponentialRampToValueAtTime(80, t + 1.6);
-  ng.gain.setValueAtTime(0, t); ng.gain.linearRampToValueAtTime(0.35 * strength, t + 0.01); ng.gain.exponentialRampToValueAtTime(0.0008, t + 1.8);
-  n.connect(lp).connect(ng); ng.connect(verbIn); ng.connect(master); n.start(t); n.stop(t + 2);
+// ── touches ─────────────────────────────────────────────────────────────────
+// a soft chime: three notes of the chord, each a sine with two quiet partials, long tail, mostly in the hall
+const CHIMES = [[59, 76, 80], [64, 76, 83], [59, 71, 80], [61, 73, 76]]; // B3 E5 G#5 and close relatives
+let lastChime = 0, chimeIx = 0;
+function chime() {
+  if (!live() || reduced || ctx.currentTime - lastChime < 0.18) return;
+  lastChime = ctx.currentTime;
+  const t = ctx.currentTime + 0.005, notes = CHIMES[chimeIx++ % CHIMES.length];
+  notes.forEach((m, k) => {
+    const when = t + k * 0.045;
+    [[1, 1], [2, 0.12], [3, 0.05]].forEach(([r, a]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(), p = ctx.createStereoPanner();
+      o.type = 'sine'; o.frequency.value = hz(m) * r; p.pan.value = (k - 1) * 0.5;
+      const peak = 0.0016 * a * (k === 0 ? 1.4 : 1);
+      g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(peak, when + 0.012); g.gain.exponentialRampToValueAtTime(0.000005, when + 4.5 / r);
+      o.connect(g).connect(p); p.connect(verbIn); p.connect(dry); o.start(when); o.stop(when + 4.6 / r);
+    });
+  });
 }
-// a sweep of noise and a falling sub as the globe flies to the next scene (dir: 1 forward, -1 back)
-let lastWhoosh = 0;
-function whoosh(dir = 1) {
-  if (!live() || ctx.currentTime - lastWhoosh < 1.2) return;
-  lastWhoosh = ctx.currentTime;
-  const t = ctx.currentTime + 0.01, len = 2.2;
-  const n = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain(), p = ctx.createStereoPanner();
-  n.buffer = whiteBuf(3);
-  bp.type = 'bandpass'; bp.Q.value = 1.2;
-  bp.frequency.setValueAtTime(180, t); bp.frequency.exponentialRampToValueAtTime(dir > 0 ? 2400 : 1400, t + len * 0.55); bp.frequency.exponentialRampToValueAtTime(220, t + len);
-  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.28, t + len * 0.5); g.gain.exponentialRampToValueAtTime(0.0008, t + len);
-  p.pan.setValueAtTime(-0.6 * dir, t); p.pan.linearRampToValueAtTime(0.6 * dir, t + len);
-  n.connect(bp).connect(g).connect(p); p.connect(bus); p.connect(verbIn); n.start(t); n.stop(t + len + 0.1);
-  const o = ctx.createOscillator(), og = ctx.createGain();
-  o.type = 'sine'; o.frequency.setValueAtTime(70, t + len * 0.3); o.frequency.exponentialRampToValueAtTime(34, t + len);
-  og.gain.setValueAtTime(0, t); og.gain.linearRampToValueAtTime(0.32, t + len * 0.55); og.gain.exponentialRampToValueAtTime(0.0008, t + len + 0.6);
-  o.connect(og).connect(bus); o.start(t); o.stop(t + len + 0.7);
+// a small sparkle: a few high glints around A6 and a breath of high noise
+let noiseBuf = null;
+function spark() {
+  if (!live()) return;
+  const t = ctx.currentTime + 0.005;
+  [93, 96, 100, 105].forEach((m, k) => {
+    const o = ctx.createOscillator(), g = ctx.createGain(), p = ctx.createStereoPanner(), when = t + k * 0.03;
+    o.type = 'sine'; o.frequency.value = hz(m) * (1 + (Math.random() - 0.5) * 0.004); p.pan.value = (Math.random() - 0.5) * 1.2;
+    g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(0.0035, when + 0.004); g.gain.exponentialRampToValueAtTime(0.00002, when + 1.6);
+    o.connect(g).connect(p); p.connect(verbIn); p.connect(dry); o.start(when); o.stop(when + 1.7);
+  });
+  if (!noiseBuf) { const n = ctx.sampleRate; noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; }
+  const n = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+  n.buffer = noiseBuf; hp.type = 'highpass'; hp.frequency.value = 6000;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.0025, t + 0.01); g.gain.exponentialRampToValueAtTime(0.00002, t + 0.6);
+  n.connect(hp).connect(g).connect(verbIn); n.start(t); n.stop(t + 0.7);
 }
 
-// called on every scroll step with the chapter's progress (scene index + fraction) and its part index
-let lastP = null, lastT = 0, lastPart = null, still = null, vel = 0;
-export function motion(p, part) {
-  if (!live() || reduced) { lastP = p; lastPart = part; return; }
-  const t = ctx.currentTime;
-  if (lastP != null) {
-    const dt = Math.max(1 / 120, t - lastT), v = Math.abs(p - lastP) / dt; // scenes a second
-    vel = vel * 0.7 + v * 0.3;
-    // wind opens with speed; it falls back by itself when the scroll stops (time constant 0.4 s)
-    at(S.wG.gain, Math.min(0.16, vel * 0.09), t, 0.08);
-    at(S.wHp.frequency, 700 + Math.min(2600, vel * 1500), t, 0.1);
-    at(S.wG.gain, 0, t + 0.15, 0.4);
-    // a flight: the camera leaves a held scene (the fraction moves off a whole number)
-    const fa = lastP - Math.floor(lastP), fb = p - Math.floor(p);
-    if (Math.floor(p) !== Math.floor(lastP) || (fa < 0.08 && fb >= 0.08) || (fa > 0.92 && fb <= 0.92)) whoosh(p >= lastP ? 1 : -1);
-    if (part != null && lastPart != null && part !== lastPart) boom(0.7);
-  }
-  lastP = p; lastT = t; lastPart = part;
-  // the bed rises while moving and sinks back after a second and a half of stillness
-  at(bus.gain, 1, t, 0.5);
-  clearTimeout(still);
-  still = setTimeout(() => { if (ctx) at(bus.gain, 0.55, ctx.currentTime, 2.5); }, 1500);
+// hover and press on the things a reader can use (menus, scene list, checks, practice, cards)
+const PRESSABLE = 'button, a[href], summary, [role="button"]';
+export function bindUI(root = document) {
+  let over = null;
+  root.addEventListener('pointerover', e => {
+    if (e.pointerType !== 'mouse') return;
+    const el = e.target.closest(PRESSABLE);
+    if (el && el !== over) { over = el; chime(); }
+    if (!el) over = null;
+  });
+  root.addEventListener('click', e => { if (e.target.closest(PRESSABLE)) spark(); }, true);
 }
